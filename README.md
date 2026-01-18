@@ -1,3 +1,5 @@
+**Made with ❤️ by 小新空**
+
 # Auto Move File
 
 一个 Obsidian 插件，根据 frontmatter 属性自动将文件移动到指定目录。支持监控 `tags`、`status`、`category` 等任意属性。
@@ -16,7 +18,7 @@
 
 ### 方法一：手动安装
 
-1. 下载最新版本的 [auto-move-file.zip](https://github.com/你的用户名/auto-move-file/releases)
+1. 下载最新版本的 [auto-move-file.zip](https://github.com/Lsywk25/auto-move-file/releases)
 2. 解压到你的 Obsidian vault 的 `.obsidian/plugins/` 目录
 3. 重启 Obsidian
 4. 进入 **设置** → **社区插件**
@@ -209,4 +211,4 @@ MIT License
 
 ---
 
-**Made with ❤️ by 小新空**
+
