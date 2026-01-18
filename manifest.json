@@ -1,0 +1,10 @@
+{
+  "id": "auto-move-file",
+  "name": "Auto Move File",
+  "version": "2.4.0",
+  "minAppVersion": "0.15.0",
+  "description": "Automatically move files based on frontmatter properties in Obsidian. Support custom monitoring attributes (tags, status, category, etc.) with flexible filtering logic.",
+  "author": "小新空",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
