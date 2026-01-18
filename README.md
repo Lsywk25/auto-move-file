@@ -18,7 +18,7 @@
 
 ### 方法一：手动安装
 
-1. 下载最新版本的 [auto-move-file.zip](https://github.com/Lsywk25/auto-move-file/releases)
+1. 下载仓库的文件
 2. 解压到你的 Obsidian vault 的 `.obsidian/plugins/` 目录
 3. 重启 Obsidian
 4. 进入 **设置** → **社区插件**
