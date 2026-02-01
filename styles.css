@@ -1,0 +1,201 @@
+/* 规则表格样式 */
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 0.9em;
+}
+
+.rules-table th,
+.rules-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.rules-table th {
+  font-weight: 600;
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.8em;
+  letter-spacing: 0.5px;
+}
+
+.rules-table tr:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.rules-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* 规则状态圆点 */
+.rules-table .enabled-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+/* 触发值高亮 */
+.rules-table .trigger-value {
+  font-weight: 600;
+  color: var(--text-accent);
+  padding: 2px 6px;
+  background-color: var(--background-modifier-hover);
+  border-radius: 3px;
+}
+
+/* 阻止值警告色 */
+.rules-table .blocking-value {
+  color: var(--text-warning);
+  font-style: italic;
+}
+
+/* 操作按钮 */
+.rules-table .action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 1.1em;
+}
+
+.rules-table .action-btn:hover {
+  background-color: var(--background-modifier-hover);
+  transform: scale(1.1);
+}
+
+/* 批量操作按钮 */
+.batch-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.batch-actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* 添加规则按钮 */
+.add-rule-btn {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 15px;
+}
+
+.add-rule-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+/* 空状态提示 */
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  background-color: var(--background-modifier-form-field);
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.empty-state p {
+  font-size: 1.1em;
+  margin: 10px 0;
+}
+
+/* 分隔线 */
+hr {
+  border: none;
+  border-top: 2px solid var(--background-modifier-border);
+  margin: 30px 0;
+}
+
+/* 标题样式 */
+h2 {
+  color: var(--text-normal);
+  border-bottom: 2px solid var(--interactive-accent);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+h3 {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 20px 0 15px 0;
+}
+
+/* 规则编辑模态框 */
+.modal button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal button:hover {
+  transform: translateY(-2px);
+}
+
+/* 作者信息 */
+.author-section {
+  background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-modifier-form-field) 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 30px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.author-button {
+  background: linear-gradient(135deg, var(--interactive-accent) 0%, var(--interactive-accent-hover) 100%);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.author-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .rules-table {
+    font-size: 0.8em;
+  }
+
+  .rules-table th,
+  .rules-table td {
+    padding: 6px 4px;
+  }
+
+  .batch-actions {
+    flex-direction: column;
+  }
+
+  .batch-actions button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}

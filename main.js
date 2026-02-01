@@ -1,14 +1,23 @@
-const { Plugin, Notice, PluginSettingTab, Setting, FuzzySuggestModal } = require('obsidian');
+const { Plugin, Notice, PluginSettingTab, Setting, FuzzySuggestModal, Modal } = require('obsidian');
 
 // 默认配置
 const DEFAULT_SETTINGS = {
-  targetFolder: '笔记/自媒体文章笔记',
-  watchFolder: '',
-  keywords: '白鹿原',
-  watchProperty: 'tags',
-  publishedTag: '已发',
-  pendingTag: '待发',
-  delayTime: 2000
+  // 全局过滤（所有规则都要满足）
+  watchFolder: '',      // 监控的文件夹（留空=整个仓库）
+  keywords: '',         // 文件名关键词（留空=不过滤）
+  delayTime: 2000,      // 延迟执行时间（毫秒）
+
+  // 规则列表（按顺序匹配，只执行第一个）
+  rules: [
+    {
+      id: 1,
+      enabled: true,
+      watchProperty: 'tags',
+      triggerValue: '已发',
+      targetFolder: '笔记/自媒体文章笔记',
+      blockingValue: '待发'
+    }
+  ]
 };
 
 // 规范化路径（处理 Windows 路径分隔符）
@@ -34,6 +43,134 @@ function isPathInFolderPath(path, folderPath) {
 
   // 检查路径是否以文件夹路径开头
   return cleanPath.startsWith(cleanFolder + '/') || cleanPath === cleanFolder;
+}
+
+// 规则编辑模态框
+class RuleEditModal extends Modal {
+  constructor(app, plugin, rule, onSave) {
+    super(app);
+    this.plugin = plugin;
+    this.rule = rule;
+    this.onSave = onSave;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    contentEl.createEl('h2', { text: this.rule ? '编辑规则' : '添加规则' });
+
+    // 规则ID（新建规则时自动生成）
+    if (!this.rule) {
+      this.rule = {
+        id: Date.now(),
+        enabled: true,
+        watchProperty: 'tags',
+        triggerValue: '已发',
+        targetFolder: '',
+        blockingValue: ''
+      };
+    }
+
+    // 监控属性
+    new Setting(contentEl)
+      .setName('监控属性')
+      .setDesc('要监控的 frontmatter 属性名（如：tags、status、form 等）')
+      .addText(text => {
+        text
+          .setPlaceholder('tags')
+          .setValue(this.rule.watchProperty)
+          .onChange(value => {
+            this.rule.watchProperty = value.trim();
+          });
+      });
+
+    // 触发值
+    new Setting(contentEl)
+      .setName('触发值')
+      .setDesc('当属性包含此值时，触发移动')
+      .addText(text => {
+        text
+          .setPlaceholder('已发')
+          .setValue(this.rule.triggerValue)
+          .onChange(value => {
+            this.rule.triggerValue = value.trim();
+          });
+      });
+
+    // 目标文件夹
+    new Setting(contentEl)
+      .setName('目标文件夹')
+      .setDesc('文件移动的目标路径')
+      .addText(text => {
+        text
+          .setPlaceholder('归档/已发文章')
+          .setValue(this.rule.targetFolder)
+          .onChange(value => {
+            this.rule.targetFolder = value.trim();
+          });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('选择文件夹')
+          .onClick(() => {
+            new FolderSuggestModal(this.app, (folder) => {
+              this.rule.targetFolder = folder;
+              this.close();
+              new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
+            }).open();
+          });
+      });
+
+    // 阻止值
+    new Setting(contentEl)
+      .setName('阻止值')
+      .setDesc('如果属性同时包含此值，则不移动（留空则不阻止）')
+      .addText(text => {
+        text
+          .setPlaceholder('待发')
+          .setValue(this.rule.blockingValue)
+          .onChange(value => {
+            this.rule.blockingValue = value.trim();
+          });
+      });
+
+    // 启用状态
+    new Setting(contentEl)
+      .setName('启用此规则')
+      .setDesc('是否启用此规则')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.rule.enabled)
+          .onChange(value => {
+            this.rule.enabled = value;
+          });
+      });
+
+    // 保存按钮
+    const buttonContainer = contentEl.createDiv();
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.marginTop = '20px';
+
+    const cancelButton = buttonContainer.createEl('button', { text: '取消' });
+    cancelButton.onclick = () => this.close();
+
+    const saveButton = buttonContainer.createEl('button', { text: '保存' });
+    saveButton.style.marginLeft = '10px';
+    saveButton.onclick = () => {
+      if (this.onSave) {
+        this.onSave(this.rule);
+      }
+      this.close();
+    };
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
 }
 
 // 文件夹选择模态框
@@ -74,8 +211,11 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   async onload() {
-    console.log('Auto Move Published Articles plugin loaded');
-    new Notice('Auto Move Published Articles plugin loaded');
+    console.log('Auto Move File v3.0 plugin loaded');
+    new Notice('Auto Move File v3.0 plugin loaded');
+
+    // 加载样式
+    this.loadStyles();
 
     // 加载配置
     await this.loadSettings();
@@ -111,6 +251,15 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
 
     // 添加设置页
     this.addSettingTab(new AutoMovePublishedArticlesSettingTab(this.app, this));
+  }
+
+  loadStyles() {
+    // 加载 CSS 样式
+    const stylesPath = '.obsidian/plugins/auto-move-file/styles.css';
+    const styles = document.createElement('link');
+    styles.rel = 'stylesheet';
+    styles.href = stylesPath;
+    document.head.appendChild(styles);
   }
 
   async onFileModified(file) {
@@ -158,7 +307,7 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     // - 如果设置了文件夹和关键词：AND 关系（两个都要满足）
     // - 如果只设置了文件夹：只检查文件夹
     // - 如果只设置了关键词：只检查关键词
-    // - 如果都没设置：监控根目录所有文件
+    // - 如果都没设置：监控整个仓库
     const hasFolderSetting = this.settings.watchFolder && this.settings.watchFolder.trim() !== '';
     const hasKeywordsSetting = this.settings.keywords && this.settings.keywords.trim() !== '';
 
@@ -177,9 +326,9 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       shouldMonitor = matchesKeywords;
       console.log('  -> Only keywords set');
     } else {
-      // 都没设置：监控根目录
-      shouldMonitor = !file.path.includes('/');
-      console.log('  -> No settings, checking root directory only');
+      // 都没设置：监控整个仓库
+      shouldMonitor = true;
+      console.log('  -> No settings, monitoring all files');
     }
 
     console.log(`  -> Should monitor: ${shouldMonitor}`);
@@ -197,44 +346,58 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       return;
     }
 
-    const propertyValue = cache.frontmatter[this.settings.watchProperty];
+    // 遍历规则，检查是否有匹配的
+    for (const rule of this.settings.rules) {
+      if (!rule.enabled) {
+        console.log(`  -> Rule ${rule.id} is disabled, skipping`);
+        continue;
+      }
 
-    // 支持数组类型和字符串类型
-    let hasPublished = false;
-    let hasPending = false;
+      console.log(`  -> Checking rule ${rule.id}...`);
 
-    if (Array.isArray(propertyValue)) {
-      // 数组类型：使用 includes 检查
-      hasPublished = propertyValue.includes(this.settings.publishedTag);
-      hasPending = propertyValue.includes(this.settings.pendingTag);
-      console.log(`  -> Property '${this.settings.watchProperty}' (array):`, propertyValue);
-    } else if (typeof propertyValue === 'string') {
-      // 字符串类型：使用完全相等检查
-      hasPublished = propertyValue === this.settings.publishedTag;
-      hasPending = propertyValue === this.settings.pendingTag;
-      console.log(`  -> Property '${this.settings.watchProperty}' (string):`, propertyValue);
-    } else {
-      // 其他类型或不存在的属性
-      console.log(`  -> Property '${this.settings.watchProperty}' is not valid or missing`);
-      return;
+      // 获取属性值
+      const propertyValue = cache.frontmatter[rule.watchProperty];
+      if (!propertyValue) {
+        console.log(`  -> Property '${rule.watchProperty}' not found, skipping rule ${rule.id}`);
+        continue;
+      }
+
+      // 检查是否匹配
+      let matchesTrigger = false;
+      let hasBlocking = false;
+
+      if (Array.isArray(propertyValue)) {
+        // 数组类型：使用 includes 检查
+        matchesTrigger = propertyValue.includes(rule.triggerValue);
+        hasBlocking = rule.blockingValue && propertyValue.includes(rule.blockingValue);
+        console.log(`  -> Property '${rule.watchProperty}' (array):`, propertyValue);
+      } else if (typeof propertyValue === 'string') {
+        // 字符串类型：使用完全相等检查
+        matchesTrigger = propertyValue === rule.triggerValue;
+        hasBlocking = rule.blockingValue && propertyValue === rule.blockingValue;
+        console.log(`  -> Property '${rule.watchProperty}' (string):`, propertyValue);
+      } else {
+        // 其他类型
+        console.log(`  -> Property '${rule.watchProperty}' is not valid type, skipping rule ${rule.id}`);
+        continue;
+      }
+
+      console.log(`  -> Matches trigger (${rule.triggerValue}): ${matchesTrigger}, Has blocking (${rule.blockingValue || 'none'}): ${hasBlocking}`);
+
+      // 匹配且不阻止 → 移动
+      if (matchesTrigger && !hasBlocking) {
+        console.log(`  -> Rule ${rule.id} matched! Moving to ${rule.targetFolder}`);
+        await this.moveFile(file, rule.targetFolder);
+        console.log('=== checkAndMoveFile completed (moved) ===\n');
+        return;
+      }
     }
 
-    console.log('  -> Has published:', hasPublished, ', Has pending:', hasPending);
-
-    // 只有包含"已发"且不包含"待发"时才移动
-    if (hasPublished && !hasPending) {
-      console.log('  -> Moving file...');
-      await this.moveFile(file);
-    } else {
-      console.log('  -> No move needed');
-    }
-
-    console.log('=== checkAndMoveFile completed ===\n');
+    console.log('  -> No rule matched, no move needed');
+    console.log('=== checkAndMoveFile completed (no move) ===\n');
   }
 
-  async moveFile(file) {
-    const targetDir = this.settings.targetFolder;
-
+  async moveFile(file, targetDir) {
     console.log('moveFile called for:', file.path, '->', targetDir);
 
     // 确保目标目录存在
@@ -321,7 +484,36 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   async loadSettings() {
     const savedSettings = await this.loadData();
     if (savedSettings) {
-      this.settings = { ...DEFAULT_SETTINGS, ...savedSettings };
+      // 检测是否是旧版配置（有 targetFolder 但没有 rules）
+      if (savedSettings.targetFolder && !savedSettings.rules) {
+        console.log('Migrating old settings to new format...');
+
+        // 迁移旧配置到新格式
+        const migratedSettings = {
+          watchFolder: savedSettings.watchFolder || '',
+          keywords: savedSettings.keywords || '',
+          delayTime: savedSettings.delayTime || 2000,
+          rules: [
+            {
+              id: 1,
+              enabled: true,
+              watchProperty: savedSettings.watchProperty || 'tags',
+              triggerValue: savedSettings.publishedTag || '已发',
+              targetFolder: savedSettings.targetFolder,
+              blockingValue: savedSettings.pendingTag || '待发'
+            }
+          ]
+        };
+
+        this.settings = { ...DEFAULT_SETTINGS, ...migratedSettings };
+
+        // 保存新配置
+        await this.saveSettings();
+        new Notice('配置已自动迁移到 v3.0 格式');
+      } else {
+        // 新版配置，直接加载
+        this.settings = { ...DEFAULT_SETTINGS, ...savedSettings };
+      }
     }
   }
 
@@ -338,43 +530,22 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.selectedRules = new Set();
   }
 
   display() {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: '自动移动文章插件设置' });
+    containerEl.createEl('h2', { text: '自动移动文件插件设置 v3.0' });
 
-    // 目标文件夹
-    new Setting(containerEl)
-      .setName('目标文件夹')
-      .setDesc('文章移动的目标文件夹路径（支持相对路径和绝对路径）')
-      .addText(text => {
-        text
-          .setPlaceholder('笔记/自媒体文章笔记')
-          .setValue(this.plugin.settings.targetFolder)
-          .onChange(async (value) => {
-            this.plugin.settings.targetFolder = normalizePath(value);
-            await this.plugin.saveSettings();
-          });
-      })
-      .addButton(button => {
-        button
-          .setButtonText('选择文件夹')
-          .onClick(() => {
-            new FolderSuggestModal(this.app, async (folder) => {
-              this.plugin.settings.targetFolder = folder;
-              await this.plugin.saveSettings();
-              this.display(); // 刷新设置页
-            }).open();
-          });
-      });
+    // ========== 全局配置区 ==========
+    containerEl.createEl('h3', { text: '全局配置' });
 
     // 监控文件夹
     new Setting(containerEl)
       .setName('监控文件夹')
-      .setDesc('监控的文件夹路径（留空则监控整个仓库，支持相对路径和绝对路径）。注意：如果同时设置了监控文件夹和关键词，则使用 AND 关系（两个条件都要满足）；如果只设置一个，则只检查该条件。')
+      .setDesc('监控的文件夹路径（留空则监控整个仓库，支持相对路径和绝对路径）。所有规则都要满足此条件。')
       .addText(text => {
         text
           .setPlaceholder('留空则忽略此条件')
@@ -391,7 +562,6 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
             new FolderSuggestModal(this.app, async (folder) => {
               this.plugin.settings.watchFolder = folder;
               await this.plugin.saveSettings();
-              this.display(); // 刷新设置页
             }).open();
           });
       });
@@ -399,55 +569,13 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     // 监控关键词
     new Setting(containerEl)
       .setName('监控关键词')
-      .setDesc('文件名包含的关键词（留空则忽略，多个关键词用逗号分隔）。注意：如果同时设置了监控文件夹和关键词，则使用 AND 关系（两个条件都要满足）；如果只设置一个，则只检查该条件；如果都留空，则监控根目录所有文件。')
+      .setDesc('文件名包含的关键词（留空则忽略，多个关键词用逗号分隔）。所有规则都要满足此条件。')
       .addText(text => {
         text
           .setPlaceholder('留空则忽略此条件')
           .setValue(this.plugin.settings.keywords)
           .onChange(async (value) => {
             this.plugin.settings.keywords = value;
-            await this.plugin.saveSettings();
-          });
-      });
-
-    // 监控属性
-    new Setting(containerEl)
-      .setName('监控属性')
-      .setDesc('监控的 frontmatter 属性名（默认：tags）。可以是 tags、status、category 等任意属性。')
-      .addText(text => {
-        text
-          .setPlaceholder('tags')
-          .setValue(this.plugin.settings.watchProperty)
-          .onChange(async (value) => {
-            this.plugin.settings.watchProperty = value.trim() || 'tags';
-            await this.plugin.saveSettings();
-          });
-      });
-
-    // 已发标签
-    new Setting(containerEl)
-      .setName('已发标签')
-      .setDesc('触发移动的标签名')
-      .addText(text => {
-        text
-          .setPlaceholder('已发')
-          .setValue(this.plugin.settings.publishedTag)
-          .onChange(async (value) => {
-            this.plugin.settings.publishedTag = value.trim();
-            await this.plugin.saveSettings();
-          });
-      });
-
-    // 待发标签
-    new Setting(containerEl)
-      .setName('待发标签')
-      .setDesc('阻止移动的标签名')
-      .addText(text => {
-        text
-          .setPlaceholder('待发')
-          .setValue(this.plugin.settings.pendingTag)
-          .onChange(async (value) => {
-            this.plugin.settings.pendingTag = value.trim();
             await this.plugin.saveSettings();
           });
       });
@@ -467,9 +595,159 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
           });
       });
 
-    // 测试按钮
+    // ========== 规则列表区 ==========
+    containerEl.createEl('hr');
+    containerEl.createEl('h3', { text: '规则列表' });
+
+    // 添加规则按钮
+    const addButton = containerEl.createEl('button', { text: '+ 添加新规则' });
+    addButton.style.marginBottom = '10px';
+    addButton.style.padding = '8px 16px';
+    addButton.onclick = () => {
+      new RuleEditModal(this.app, this.plugin, null, async (rule) => {
+        this.plugin.settings.rules.push(rule);
+        await this.plugin.saveSettings();
+        this.display();
+      }).open();
+    };
+
+    // 规则表格
+    if (this.plugin.settings.rules.length === 0) {
+      const emptyText = containerEl.createDiv();
+      emptyText.textContent = '暂无规则，请添加新规则';
+      emptyText.style.color = 'var(--text-muted)';
+      emptyText.style.padding = '20px';
+      emptyText.style.textAlign = 'center';
+    } else {
+      const table = containerEl.createEl('table');
+      table.addClass('rules-table');
+
+      // 表头
+      const thead = table.createEl('thead');
+      const headerRow = thead.createEl('tr');
+      ['', '#', '启用', '监控属性', '触发值', '目标文件夹', '阻止值', '操作'].forEach(text => {
+        const th = headerRow.createEl('th');
+        th.textContent = text;
+        th.style.padding = '8px';
+        th.style.textAlign = 'left';
+        th.style.borderBottom = '1px solid var(--background-modifier-border)';
+      });
+
+      // 表体
+      const tbody = table.createEl('tbody');
+      this.plugin.settings.rules.forEach((rule, index) => {
+        const row = tbody.createEl('tr');
+        row.style.borderBottom = '1px solid var(--background-modifier-border)';
+
+        // 复选框
+        const checkboxCell = row.createEl('td');
+        checkboxCell.style.padding = '8px';
+        const checkbox = checkboxCell.createEl('input', { type: 'checkbox' });
+        checkbox.checked = this.selectedRules.has(rule.id);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            this.selectedRules.add(rule.id);
+          } else {
+            this.selectedRules.delete(rule.id);
+          }
+          this.updateSelectionStatus();
+        });
+
+        // 规则编号
+        const idCell = row.createEl('td');
+        idCell.textContent = index + 1;
+        idCell.style.padding = '8px';
+
+        // 启用状态
+        const enabledCell = row.createEl('td');
+        enabledCell.textContent = rule.enabled ? '🔴' : '⭕';
+        enabledCell.style.padding = '8px';
+        enabledCell.style.textAlign = 'center';
+
+        // 监控属性
+        const propCell = row.createEl('td');
+        propCell.textContent = rule.watchProperty;
+        propCell.style.padding = '8px';
+
+        // 触发值
+        const triggerCell = row.createEl('td');
+        triggerCell.textContent = rule.triggerValue;
+        triggerCell.style.padding = '8px';
+        triggerCell.style.fontWeight = 'bold';
+        triggerCell.style.color = 'var(--text-accent)';
+
+        // 目标文件夹
+        const targetCell = row.createEl('td');
+        targetCell.textContent = rule.targetFolder;
+        targetCell.style.padding = '8px';
+
+        // 阻止值
+        const blockingCell = row.createEl('td');
+        blockingCell.textContent = rule.blockingValue || '-';
+        blockingCell.style.padding = '8px';
+        blockingCell.style.color = rule.blockingValue ? 'var(--text-warning)' : 'var(--text-muted)';
+
+        // 操作按钮
+        const actionsCell = row.createEl('td');
+        actionsCell.style.padding = '8px';
+
+        // 编辑按钮
+        const editBtn = actionsCell.createEl('button', { text: '✏️' });
+        editBtn.style.marginRight = '5px';
+        editBtn.style.padding = '4px 8px';
+        editBtn.onclick = () => {
+          new RuleEditModal(this.app, this.plugin, rule, async (updatedRule) => {
+            const ruleIndex = this.plugin.settings.rules.findIndex(r => r.id === rule.id);
+            if (ruleIndex !== -1) {
+              this.plugin.settings.rules[ruleIndex] = updatedRule;
+              await this.plugin.saveSettings();
+              this.display();
+            }
+          }).open();
+        };
+
+        // 删除按钮
+        const deleteBtn = actionsCell.createEl('button', { text: '🗑️' });
+        deleteBtn.style.padding = '4px 8px';
+        deleteBtn.onclick = () => {
+          this.plugin.settings.rules = this.plugin.settings.rules.filter(r => r.id !== rule.id);
+          this.plugin.saveSettings();
+          this.display();
+        };
+      });
+    }
+
+    // ========== 批量操作栏 ==========
+    if (this.plugin.settings.rules.length > 0) {
+      containerEl.createEl('hr');
+      const batchDiv = containerEl.createDiv();
+      batchDiv.style.marginTop = '10px';
+
+      this.selectionStatus = batchDiv.createDiv();
+      this.selectionStatus.textContent = '已选中 0 个规则';
+      this.selectionStatus.style.marginBottom = '10px';
+      this.selectionStatus.style.fontWeight = 'bold';
+
+      const buttonContainer = batchDiv.createDiv();
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '10px';
+
+      const deleteButton = buttonContainer.createEl('button', { text: '🗑️ 删除选中' });
+      deleteButton.onclick = () => this.batchDelete();
+
+      const disableButton = buttonContainer.createEl('button', { text: '⏸️ 禁用选中' });
+      disableButton.onclick = () => this.batchSetEnabled(false);
+
+      const enableButton = buttonContainer.createEl('button', { text: '▶️ 启用选中' });
+      enableButton.onclick = () => this.batchSetEnabled(true);
+    }
+
+    // ========== 测试按钮 ==========
+    containerEl.createEl('hr');
+    containerEl.createEl('h3', { text: '测试功能' });
+
     new Setting(containerEl)
-      .setName('测试配置')
+      .setName('测试当前文件')
       .setDesc('检查当前活动文件是否符合移动条件')
       .addButton(button => {
         button
@@ -495,62 +773,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
           });
       });
 
-    // 显示当前配置
-    containerEl.createEl('hr');
-    containerEl.createEl('h3', { text: '当前配置' });
-
-    const configDiv = containerEl.createDiv();
-    configDiv.style.fontSize = '0.9em';
-    configDiv.style.padding = '10px';
-    configDiv.style.backgroundColor = 'var(--background-modifier-form-field)';
-    configDiv.style.borderRadius = '5px';
-
-    const normalizedTarget = normalizePath(this.plugin.settings.targetFolder);
-    const normalizedWatch = normalizePath(this.plugin.settings.watchFolder);
-    const hasFolderSetting = normalizedWatch && normalizedWatch.trim() !== '';
-    const hasKeywordsSetting = this.plugin.settings.keywords && this.plugin.settings.keywords.trim() !== '';
-
-    // 使用 createDocumentFragment 避免 HTML 标签显示问题
-    const configEl = document.createDocumentFragment();
-
-    const addConfigLine = (label, value) => {
-      const line = document.createElement('div');
-      line.style.marginBottom = '4px';
-      line.innerHTML = `<strong>${label}：</strong>${value}`;
-      return line;
-    };
-
-    // 添加监控逻辑
-    const logicLine = document.createElement('div');
-    logicLine.style.marginBottom = '8px';
-    logicLine.style.padding = '4px';
-    logicLine.style.backgroundColor = 'var(--background-modifier-hover)';
-    logicLine.style.borderRadius = '3px';
-
-    let logicText = '';
-    if (hasFolderSetting && hasKeywordsSetting) {
-      logicText = '监控逻辑：AND 关系（既在文件夹中又包含关键词）';
-    } else if (hasFolderSetting) {
-      logicText = '监控逻辑：只检查监控文件夹';
-    } else if (hasKeywordsSetting) {
-      logicText = '监控逻辑：只检查监控关键词';
-    } else {
-      logicText = '监控逻辑：监控根目录所有文件';
-    }
-    logicLine.innerHTML = `<strong>${logicText}</strong>`;
-    configEl.appendChild(logicLine);
-
-    configEl.appendChild(addConfigLine('目标文件夹', normalizedTarget));
-    configEl.appendChild(addConfigLine('监控文件夹', normalizedWatch || '未设置'));
-    configEl.appendChild(addConfigLine('监控关键词', this.plugin.settings.keywords || '未设置'));
-    configEl.appendChild(addConfigLine('监控属性', this.plugin.settings.watchProperty));
-    configEl.appendChild(addConfigLine('已发标签', this.plugin.settings.publishedTag));
-    configEl.appendChild(addConfigLine('待发标签', this.plugin.settings.pendingTag));
-    configEl.appendChild(addConfigLine('延迟时间', this.plugin.settings.delayTime + 'ms'));
-
-    configDiv.appendChild(configEl);
-
-    // 添加作者信息
+    // ========== 作者信息 ==========
     containerEl.createEl('hr');
 
     const authorDiv = containerEl.createDiv();
@@ -568,7 +791,6 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorName.style.fontSize = '1.1em';
     authorDiv.appendChild(authorName);
 
-    // 创建可点击的作者按钮
     const authorButton = document.createElement('button');
     authorButton.textContent = '小新空';
     authorButton.style.margin = '0';
@@ -583,7 +805,6 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorButton.style.transition = 'all 0.2s ease';
     authorButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
-    // 悬停效果
     authorButton.onmouseenter = () => {
       authorButton.style.transform = 'translateY(-2px)';
       authorButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
@@ -593,20 +814,16 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       authorButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
     };
 
-    // 点击事件
     authorButton.onclick = () => {
-      // 复制到剪贴板
       navigator.clipboard.writeText('小新空').then(() => {
         new Notice('已复制「小新空」到剪贴板，请在微信中搜索');
       }).catch(() => {
-        // 如果复制失败，打开微信网页版
         window.open('https://weixin.qq.com/', '_blank');
       });
     };
 
     authorDiv.appendChild(authorButton);
 
-    // 添加微信公众号提示
     const wechatHint = document.createElement('div');
     wechatHint.textContent = '微信公众号：小新空';
     wechatHint.style.marginTop = '12px';
@@ -614,13 +831,48 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     wechatHint.style.fontSize = '0.85em';
     authorDiv.appendChild(wechatHint);
 
-    // 添加搜索提示
     const searchHint = document.createElement('div');
     searchHint.textContent = '点击上方按钮，在微信中搜索「小新空」';
     searchHint.style.marginTop = '4px';
     searchHint.style.color = 'var(--text-faint)';
     searchHint.style.fontSize = '0.8em';
     authorDiv.appendChild(searchHint);
+  }
+
+  updateSelectionStatus() {
+    if (this.selectionStatus) {
+      this.selectionStatus.textContent = `已选中 ${this.selectedRules.size} 个规则`;
+    }
+  }
+
+  async batchDelete() {
+    if (this.selectedRules.size === 0) {
+      new Notice('请先选择要删除的规则');
+      return;
+    }
+
+    this.plugin.settings.rules = this.plugin.settings.rules.filter(r => !this.selectedRules.has(r.id));
+    await this.plugin.saveSettings();
+    this.selectedRules.clear();
+    this.display();
+    new Notice(`已删除 ${this.selectedRules.size} 个规则`);
+  }
+
+  async batchSetEnabled(enabled) {
+    if (this.selectedRules.size === 0) {
+      new Notice('请先选择要操作的规则');
+      return;
+    }
+
+    this.plugin.settings.rules.forEach(rule => {
+      if (this.selectedRules.has(rule.id)) {
+        rule.enabled = enabled;
+      }
+    });
+
+    await this.plugin.saveSettings();
+    this.display();
+    new Notice(`已${enabled ? '启用' : '禁用'} ${this.selectedRules.size} 个规则`);
   }
 }
 
