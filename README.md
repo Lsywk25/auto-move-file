@@ -1,229 +1,223 @@
-# GitApp.net - Smart Note Organization for Obsidian / Obsidian 智能笔记整理插件
-
-[English](#english) | [中文](#中文)
-
----
-
-## English
-
-### 🌟 Overview
-GitApp.net is a powerful Obsidian plugin designed to automatically organize and archive your notes, eliminating the need for manual file management. Say goodbye to dragging files around manually!
-
-**Website**: [https://gitapp.net](https://gitapp.net) *(Coming Soon)*
-
-### 📺 Video Tutorials
-- **YouTube**: [Watch Tutorial](https://youtu.be/VzaoMqYdZfk)
-- **Bilibili**: [观看教程](https://www.bilibili.com/video/BV1xK6tBWES7/?share_source=copy_web&vd_source=2db5bc2d9b93b1d4e36c612c9d52221b)
-
-### 🚀 Features
-- **Automatic Note Organization**: Intelligently categorizes and moves notes based on content and metadata
-- **Smart Archive System**: Automatically archives old or unused notes
-- **Custom Rules**: Define your own organization rules and patterns
-- **Batch Processing**: Handle multiple files simultaneously
-- **Safe Operations**: Built-in backup and recovery mechanisms
-- **Performance Optimized**: Minimal impact on Obsidian's performance
-
-### 📦 Installation
-
-#### Method 1: Community Plugin (Recommended)
-1. Open Obsidian Settings
-2. Navigate to **Community Plugins**
-3. Disable **Safe Mode** if enabled
-4. Click **Browse** and search for "GitApp.net"
-5. Click **Install** and then **Enable**
-
-#### Method 2: Manual Installation
-1. Download the latest release from [GitHub Releases](https://github.com/your-username/gitapp-net/releases)
-2. Extract the files to your vault's `.obsidian/plugins/gitapp-net/` directory
-3. Reload Obsidian or restart the application
-4. Enable the plugin in Settings → Community Plugins
-
-#### Method 3: BRAT (Beta Reviewer's Auto-update Tool)
-1. Install the BRAT plugin from Community Plugins
-2. Add this repository: `your-username/gitapp-net`
-3. The plugin will be automatically installed and updated
-
-### ⚙️ Configuration
-
-#### Basic Setup
-1. Navigate to **Settings** → **GitApp.net**
-2. Configure your organization rules:
-   - **Source Folders**: Specify which folders to monitor
-   - **Archive Location**: Set where organized files should go
-   - **File Patterns**: Define naming conventions and categorization rules
-
-#### Advanced Settings
-```json
-{
-  "autoOrganize": true,
-  "archiveAfterDays": 30,
-  "sourcefolders": ["Daily Notes", "Inbox"],
-  "archiveFolder": "Archive",
-  "rules": [
-    {
-      "pattern": "*.md",
-      "condition": "older than 30 days",
-      "action": "move to archive"
-    }
-  ]
-}
-```
-
-### 🎯 Usage
-
-#### Auto-Organization
-The plugin automatically monitors your specified folders and applies organization rules in real-time.
-
-#### Manual Organization
-- Use the command palette (`Ctrl/Cmd + P`)
-- Search for "GitApp.net: Organize Notes"
-- Select the command to manually trigger organization
-
-#### Custom Rules
-Create custom organization rules in the settings:
-1. **File Age Rules**: Archive files older than X days
-2. **Content-based Rules**: Organize based on tags, content, or metadata
-3. **Folder-specific Rules**: Apply different rules to different folders
-
-### 🔧 Commands
-- `GitApp.net: Organize All Notes` - Manually trigger organization for all notes
-- `GitApp.net: Archive Old Notes` - Archive notes based on age criteria
-- `GitApp.net: Restore from Archive` - Restore archived notes
-- `GitApp.net: Open Settings` - Quick access to plugin settings
-
-### 📝 Examples
-
-#### Daily Note Organization
-```
-Input: Daily Notes/2024-01-15.md (30 days old)
-Rule: Archive daily notes older than 7 days
-Output: Archive/Daily Notes/2024/01/2024-01-15.md
-```
-
-#### Tag-based Organization
-```
-Input: Note with #project tag
-Rule: Move project notes to Projects folder
-Output: Projects/project-note.md
-```
-
-### 🤝 Support
-- **Website**: [https://gitapp.net](https://gitapp.net)
-- **Issues**: Report bugs and request features on GitHub
-- **Documentation**: Full documentation available at gitapp.net
-
-### 📄 License
-This project is licensed under the MIT License.
-
----
-
-## 中文
-
-### 🌟 概述
-GitApp.net 是一个强大的 Obsidian 插件，专为自动整理和归档笔记而设计，让您告别手动文件管理的烦恼。不再需要手动拖拽文件！
+# Auto Move File - Obsidian 自动移动文件插件
 
 **官网**: [https://gitapp.net](https://gitapp.net) *(即将推出)*
 
 ### 📺 视频教程
-- **YouTube**: [观看教程](https://youtu.be/VzaoMqYdZfk)  
+- **YouTube**: [观看教程](https://youtu.be/VzaoMqYdZfk)
 - **哔哩哔哩**: [Obsidian自动整理插件：实现笔记自动归档，别再手动拖文件了！](https://www.bilibili.com/video/BV1xK6tBWES7/?share_source=copy_web&vd_source=2db5bc2d9b93b1d4e36c612c9d52221b)
 
-### 🚀 特性
-- **自动笔记整理**: 基于内容和元数据智能分类和移动笔记
-- **智能归档系统**: 自动归档旧的或未使用的笔记
-- **自定义规则**: 定义您自己的整理规则和模式  
-- **批量处理**: 同时处理多个文件
-- **安全操作**: 内置备份和恢复机制
-- **性能优化**: 对 Obsidian 性能影响最小
+---
 
-### 📦 安装
+## 功能特性
+**Made with ❤️ by 小新空**
 
-#### 方法 1: 社区插件 (推荐)
-1. 打开 Obsidian 设置
-2. 导航到 **社区插件**
-3. 如果已启用，请禁用 **安全模式**
-4. 点击 **浏览** 并搜索 "GitApp.net"
-5. 点击 **安装** 然后 **启用**
+# Auto Move File
 
-#### 方法 2: 手动安装
-1. 从 [GitHub Releases](https://github.com/your-username/gitapp-net/releases) 下载最新版本
-2. 将文件解压到您的保险库的 `.obsidian/plugins/gitapp-net/` 目录
-3. 重新加载 Obsidian 或重启应用程序
-4. 在 设置 → 社区插件 中启用插件
+一个 Obsidian 插件，根据 frontmatter 属性自动将文件移动到指定目录。支持监控 `tags`、`status`、`category` 等任意属性。
 
-#### 方法 3: BRAT (Beta测试者自动更新工具)
-1. 从社区插件安装 BRAT 插件
-2. 添加此仓库: `your-username/gitapp-net`
-3. 插件将自动安装和更新
+## 功能特性
 
-### ⚙️ 配置
+- **自动移动文件**：根据 frontmatter 属性值自动移动文件
+- **灵活监控逻辑**：支持监控文件夹、关键词的 AND/OR 组合
+- **自定义监控属性**：可监控 `tags`、`status`、`category` 等任意 frontmatter 属性
+- **多种数据类型**：支持数组类型（如 `tags`）和字符串类型（如 `status`）
+- **文件夹选择器**：可视化选择目标文件夹
+- **完美支持中文**：支持 Windows 路径和中文路径
+- **可调延迟**：避免频繁触发，可自定义延迟时间
 
-#### 基础设置
-1. 导航到 **设置** → **GitApp.net**
-2. 配置您的整理规则:
-   - **源文件夹**: 指定要监控的文件夹
-   - **归档位置**: 设置整理后文件的存放位置
-   - **文件模式**: 定义命名约定和分类规则
+## 安装
 
-#### 高级设置
-```json
-{
-  "autoOrganize": true,
-  "archiveAfterDays": 30,
-  "sourcefolders": ["Daily Notes", "Inbox"],
-  "archiveFolder": "Archive",
-  "rules": [
-    {
-      "pattern": "*.md",
-      "condition": "older than 30 days", 
-      "action": "move to archive"
-    }
-  ]
-}
+### 方法一：手动安装
+
+1. 下载仓库的文件
+2. 解压到你的 Obsidian vault 的 `.obsidian/plugins/` 目录
+3. 重启 Obsidian
+4. 进入 **设置** → **社区插件**
+5. 找到 **Auto Move File**，启用插件
+
+### 方法二：从 GitHub 安装
+
+1. 下载 `main.js` 和 `manifest.json`
+2. 将文件放入 `.obsidian/plugins/auto-move-file/` 目录
+3. 重启 Obsidian 并启用插件
+
+## 使用说明
+
+### 基本流程
+
+1. 打开任意 Markdown 文件
+2. 修改文件的 frontmatter 属性（如将标签改为"已发"）
+3. 保存文件（Ctrl + S）
+4. 文件自动移动到目标目录
+
+### 配置示例
+
+#### 示例 1：监控 tags（默认）
+
+**Frontmatter：**
+```yaml
+---
+tags: [待发, 文章]
+---
 ```
 
-### 🎯 使用方法
+**配置：**
+- 监控属性：`tags`
+- 已发标签：`已发`
+- 待发标签：`待发`
 
-#### 自动整理
-插件自动监控您指定的文件夹，并实时应用整理规则。
+**触发移动：** 将 `tags` 改为 `[已发]` 并保存
 
-#### 手动整理
-- 使用命令面板 (`Ctrl/Cmd + P`)
-- 搜索 "GitApp.net: Organize Notes"
-- 选择命令手动触发整理
+---
 
-#### 自定义规则
-在设置中创建自定义整理规则:
-1. **文件年龄规则**: 归档超过 X 天的文件
-2. **基于内容的规则**: 基于标签、内容或元数据进行整理
-3. **文件夹特定规则**: 对不同文件夹应用不同规则
+#### 示例 2：监控 status
 
-### 🔧 命令
-- `GitApp.net: Organize All Notes` - 手动触发所有笔记的整理
-- `GitApp.net: Archive Old Notes` - 基于年龄标准归档笔记
-- `GitApp.net: Restore from Archive` - 从归档中恢复笔记
-- `GitApp.net: Open Settings` - 快速访问插件设置
-
-### 📝 示例
-
-#### 日记整理
-```
-输入: Daily Notes/2024-01-15.md (30天前)
-规则: 归档超过7天的日记
-输出: Archive/Daily Notes/2024/01/2024-01-15.md
+**Frontmatter：**
+```yaml
+---
+status: draft
+---
 ```
 
-#### 基于标签的整理
-```
-输入: 带有 #项目 标签的笔记
-规则: 将项目笔记移动到项目文件夹
-输出: Projects/project-note.md
+**配置：**
+- 监控属性：`status`
+- 已发标签：`published`
+- 待发标签：`draft`
+
+**触发移动：** 将 `status` 改为 `published` 并保存
+
+---
+
+#### 示例 3：监控 category
+
+**Frontmatter：**
+```yaml
+---
+category: 待发布
+---
 ```
 
-### 🤝 支持
-- **官网**: [https://gitapp.net](https://gitapp.net)
-- **问题反馈**: 在 GitHub 上报告错误和功能请求
-- **文档**: 完整文档可在 gitapp.net 查看
+**配置：**
+- 监控属性：`category`
+- 已发标签：`已发布`
+- 待发标签：`待发布`
 
-### 📄 许可证
-本项目采用 MIT 许可证。
+**触发移动：** 将 `category` 改为 `已发布` 并保存
+
+## 配置说明
+
+### 基本配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| 目标文件夹 | 文件移动的目标目录 | `笔记/自媒体文章笔记` |
+| 监控属性 | 监控的 frontmatter 属性名 | `tags` |
+| 已发标签 | 触发移动的属性值 | `已发` |
+| 待发标签 | 阻止移动的属性值 | `待发` |
+| 延迟时间 | 文件修改后延迟多久执行检查（毫秒） | `2000` |
+
+### 高级过滤
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| 监控文件夹 | 只监控指定文件夹下的文件（留空则忽略） | 空 |
+| 监控关键词 | 文件名必须包含的关键词（留空则忽略，多个用逗号分隔） | 空 |
+
+### 监控逻辑
+
+| 监控文件夹 | 监控关键词 | 监控逻辑 |
+|:---------:|:---------:|---------|
+| ✅ 设置了 | ✅ 设置了 | AND（两个条件都要满足） |
+| ✅ 设置了 | ❌ 留空 | 只检查监控文件夹 |
+| ❌ 留空 | ✅ 设置了 | 只检查监控关键词 |
+| ❌ 留空 | ❌ 留空 | 监控所有文件 |
+
+## 支持的数据类型
+
+### 数组类型（如 `tags`）
+
+使用 `includes` 检查，只要数组中包含指定值即可触发。
+
+```yaml
+---
+tags: [已发, 文章]
+---
+```
+
+### 字符串类型（如 `status`）
+
+使用完全相等（`===`）检查。
+
+```yaml
+---
+status: published
+---
+```
+
+## 快捷命令
+
+- **检查并移动当前文件**：检查当前打开的文件是否符合移动条件
+- **检查并移动所有文件**：检查所有符合条件的文件并批量移动
+
+## 常见问题
+
+### Q: 文件没有自动移动？
+
+**A:** 请检查：
+1. 文件是否在监控文件夹内（如果设置了）
+2. 文件名是否包含监控关键词（如果设置了）
+3. Frontmatter 中监控属性的值是否正确
+4. 是否同时包含"已发"和"待发"（会被阻止）
+
+### Q: 如何调试插件？
+
+**A:** 打开 Obsidian 的开发者工具（Ctrl + Shift + I），查看 Console 标签，可以看到插件的详细日志。
+
+### Q: 支持嵌套文件夹吗？
+
+**A:** 完全支持。插件会自动处理 Windows 和 Unix 风格的路径分隔符。
+
+### Q: 可以监控多个属性吗？
+
+**A:** 目前每个插件实例只能监控一个属性。如果需要监控多个属性，可以运行多个插件实例（需要修改插件 ID）。
+
+## 更新日志
+
+### v2.4
+- ✅ 新增自定义监控属性功能
+- ✅ 支持数组类型和字符串类型
+- ✅ 向后兼容，默认监控 `tags`
+
+### v2.3
+- ✅ 添加微信公众号可点击功能
+- ✅ 按钮自动复制到剪贴板
+
+### v2.2
+- ✅ 添加文件夹选择器
+- ✅ 添加作者信息显示
+
+### v2.1
+- ✅ 支持 Windows 路径分隔符
+- ✅ 支持中文路径
+
+### v2.0
+- ✅ 添加配置功能
+- ✅ 支持灵活的监控逻辑（AND/OR）
+
+## 作者
+
+**小新空**
+
+微信公众号：小新空（点击设置页面的作者按钮可复制）
+
+## 许可证
+
+MIT License
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+如果你喜欢这个插件，请给个 Star ⭐
+
+---
