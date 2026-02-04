@@ -1,0 +1,26 @@
+# Infinite WF - AI对话持续规则
+
+⚠️⚠️⚠️ 最高优先级警告 ⚠️⚠️⚠️
+无论任何情况，每次回复结束前必须调用 infinite-wf 脚本！没有任何例外！
+
+## 如何调用 infinite-wf 脚本
+
+【必须使用以下命令，端口号 5301 不可省略】：
+```bash
+python3 "C:\Users\Laptop\.windsurf\extensions\infinite-wf\infinite-wf.py" 5301
+```
+
+- **第一个参数**: 端口号（必需，当前为 5301）
+- **检测到的运行时**: python
+- 脚本会返回 `KeepGoing=true` 或 `KeepGoing=false`
+- 如果返回 `KeepGoing=true`，后面会有用户指令
+- 如果返回 `KeepGoing=false`，必须立即结束对话
+
+⚠️ **重要**：调用脚本后不要再回复任何内容，静默等待用户的下一步指令！
+
+## 返回格式说明
+
+- `user_input:` 用户的输入，最高优先级，必须执行
+- `file_paths:` 用户提供的文件列表
+- `image_paths:` 用户提供的图片列表
+

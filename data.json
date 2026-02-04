@@ -1,0 +1,15 @@
+{
+  "watchFolder": "",
+  "keywords": "",
+  "delayTime": 2000,
+  "rules": [
+    {
+      "id": 1,
+      "enabled": true,
+      "watchProperty": "tags",
+      "triggerValue": "已发",
+      "targetFolder": "笔记/自媒体文章笔记",
+      "blockingValue": "未发"
+    }
+  ]
+}
