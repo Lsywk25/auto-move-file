@@ -4,7 +4,7 @@
   "version": "3.0.0",
   "minAppVersion": "0.15.0",
   "description": "自动移动文件插件 v3.0 - 支持多规则、多属性监控，灵活配置目标文件夹",
-  "author": "小新空",
+  "author": "极拓工坊",
   "authorUrl": "",
   "isDesktopOnly": false
 }

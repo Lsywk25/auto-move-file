@@ -15,7 +15,12 @@ const DEFAULT_SETTINGS = {
       watchProperty: 'tags',
       triggerValue: '已发',
       targetFolder: '笔记/自媒体文章笔记',
-      blockingValue: '待发'
+      blockingValue: '待发',
+      copyMode: false,  // true=复制模式，false=移动模式
+      watchMode: 'property',  // 'property'=监控属性, 'filename'=监控文件名
+      archiveFolder: false,  // true=归档整个文件夹, false=归档单个文件
+      filenamePattern: '',  // 文件名包含的字符串
+      sourceFolder: ''  // 源文件夹路径（仅在文件夹归档模式下使用）
     }
   ]
 };
@@ -68,35 +73,87 @@ class RuleEditModal extends Modal {
         watchProperty: 'tags',
         triggerValue: '已发',
         targetFolder: '',
-        blockingValue: ''
+        blockingValue: '',
+        copyMode: false,
+        watchMode: 'property',
+        archiveFolder: false,
+        filenamePattern: '',
+        sourceFolder: ''
       };
     }
 
-    // 监控属性
+    // 监控模式
     new Setting(contentEl)
-      .setName('监控属性')
-      .setDesc('要监控的 frontmatter 属性名（如：tags、status、form 等）')
-      .addText(text => {
-        text
-          .setPlaceholder('tags')
-          .setValue(this.rule.watchProperty)
+      .setName('监控模式')
+      .setDesc('选择监控模式')
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('property', '监控属性值')
+          .addOption('filename', '监控文件名')
+          .setValue(this.rule.watchMode || 'property')
           .onChange(value => {
-            this.rule.watchProperty = value.trim();
+            this.rule.watchMode = value;
+            // 重新打开模态框以更新界面
+            this.close();
+            new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
           });
       });
 
-    // 触发值
-    new Setting(contentEl)
-      .setName('触发值')
-      .setDesc('当属性包含此值时，触发移动')
-      .addText(text => {
-        text
-          .setPlaceholder('已发')
-          .setValue(this.rule.triggerValue)
-          .onChange(value => {
-            this.rule.triggerValue = value.trim();
-          });
-      });
+    // 根据监控模式显示不同的配置项
+    if (this.rule.watchMode === 'property') {
+      // 监控属性
+      new Setting(contentEl)
+        .setName('监控属性')
+        .setDesc('要监控的 frontmatter 属性名（如：tags、status、form 等）')
+        .addText(text => {
+          text
+            .setPlaceholder('tags')
+            .setValue(this.rule.watchProperty)
+            .onChange(value => {
+              this.rule.watchProperty = value.trim();
+            });
+        });
+
+      // 触发值
+      new Setting(contentEl)
+        .setName('触发值')
+        .setDesc('当属性包含此值时，触发归档')
+        .addText(text => {
+          text
+            .setPlaceholder('已发')
+            .setValue(this.rule.triggerValue)
+            .onChange(value => {
+              this.rule.triggerValue = value.trim();
+            });
+        });
+
+      // 阻止值
+      new Setting(contentEl)
+        .setName('阻止值')
+        .setDesc('如果属性同时包含此值，则不移动（留空则不阻止）')
+        .addText(text => {
+          text
+            .setPlaceholder('待发')
+            .setValue(this.rule.blockingValue)
+            .onChange(value => {
+              this.rule.blockingValue = value.trim();
+            });
+        });
+    } else {
+      // 文件名模式（仅在文件名监控模式下显示）
+      new Setting(contentEl)
+        .setName('文件名包含字符')
+        .setDesc('输入文件名必须包含的字符串（不区分大小写）')
+        .addText(text => {
+          text
+            .setPlaceholder('例如：已发、完成、done等')
+            .setValue(this.rule.filenamePattern || '')
+            .onChange(value => {
+              this.rule.filenamePattern = value.trim();
+            });
+        });
+    }
+
 
     // 目标文件夹
     new Setting(contentEl)
@@ -122,18 +179,6 @@ class RuleEditModal extends Modal {
           });
       });
 
-    // 阻止值
-    new Setting(contentEl)
-      .setName('阻止值')
-      .setDesc('如果属性同时包含此值，则不移动（留空则不阻止）')
-      .addText(text => {
-        text
-          .setPlaceholder('待发')
-          .setValue(this.rule.blockingValue)
-          .onChange(value => {
-            this.rule.blockingValue = value.trim();
-          });
-      });
 
     // 启用状态
     new Setting(contentEl)
@@ -146,6 +191,61 @@ class RuleEditModal extends Modal {
             this.rule.enabled = value;
           });
       });
+
+    // 文件夹归档模式
+    new Setting(contentEl)
+      .setName('文件夹归档模式')
+      .setDesc('勾选时归档指定的整个文件夹，不勾选时只归档单个文件')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.rule.archiveFolder || false)
+          .onChange(value => {
+            this.rule.archiveFolder = value;
+            // 重新打开模态框以更新界面
+            this.close();
+            new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
+          });
+      });
+
+    // 源文件夹选择（仅在文件夹归档模式下显示）
+    if (this.rule.archiveFolder) {
+      new Setting(contentEl)
+        .setName('源文件夹')
+        .setDesc('选择要归档的源文件夹路径')
+        .addText(text => {
+          text
+            .setPlaceholder('选择要归档的源文件夹')
+            .setValue(this.rule.sourceFolder || '')
+            .onChange(value => {
+              this.rule.sourceFolder = value.trim();
+            });
+        })
+        .addButton(button => {
+          button
+            .setButtonText('选择文件夹')
+            .onClick(() => {
+              new FolderSuggestModal(this.app, (folder) => {
+                this.rule.sourceFolder = folder;
+                this.close();
+                new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
+              }).open();
+            });
+        });
+    }
+
+    // 复制模式（只在文件模式下可用）
+    if (!this.rule.archiveFolder) {
+      new Setting(contentEl)
+        .setName('复制模式')
+        .setDesc('勾选时复制文件到目标文件夹（保留原文件），不勾选时移动文件到目标文件夹')
+        .addToggle(toggle => {
+          toggle
+            .setValue(this.rule.copyMode || false)
+            .onChange(value => {
+              this.rule.copyMode = value;
+            });
+        });
+    }
 
     // 保存按钮
     const buttonContainer = contentEl.createDiv();
@@ -227,6 +327,13 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       })
     );
 
+    // 监听文件重命名事件（用于文件名监控模式）
+    this.registerEvent(
+      this.app.vault.on('rename', (file, oldPath) => {
+        this.onFileRenamed(file, oldPath);
+      })
+    );
+
     // 添加命令
     this.addCommand({
       id: 'check-active-file',
@@ -266,6 +373,16 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     console.log('=== File modified event triggered ===');
     console.log('File modified:', file.path);
 
+    // 检查是否有文件名监控模式的规则
+    const hasFilenameRules = this.settings.rules && this.settings.rules.some(rule => 
+      rule.enabled && rule.watchMode === 'filename'
+    );
+    
+    if (hasFilenameRules) {
+      console.log('  -> Has filename monitoring rules, skipping modify event (waiting for rename)');
+      return;
+    }
+
     // 延迟执行
     setTimeout(() => {
       console.log('=== Delay elapsed, checking file now ===');
@@ -278,10 +395,28 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     }, this.settings.delayTime);
   }
 
-  async checkAndMoveFile(file) {
+  async onFileRenamed(file, oldPath) {
+    console.log('=== File renamed event triggered ===');
+    console.log('File renamed:', oldPath, '->', file.path);
+    console.log('New filename:', file.name);
+
+    // 延迟执行
+    setTimeout(() => {
+      console.log('=== Delay elapsed, checking renamed file now ===');
+      const freshFile = this.app.vault.getAbstractFileByPath(file.path);
+      if (freshFile) {
+        this.checkAndMoveFile(freshFile, true); // 传入true表示这是重命名事件
+      } else {
+        console.log('  -> File no longer exists:', file.path);
+      }
+    }, this.settings.delayTime);
+  }
+
+  async checkAndMoveFile(file, isRenamed = false) {
     console.log('=== checkAndMoveFile called ===');
     console.log('File path:', file.path);
     console.log('File name:', file.name);
+    console.log('Is renamed event:', isRenamed);
 
     // 只处理 markdown 文件
     if (file.extension !== 'md') {
@@ -339,10 +474,9 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
 
     console.log('  -> File passed all checks');
 
-    // 获取文件缓存
-    const cache = this.app.metadataCache.getFileCache(file);
-    if (!cache || !cache.frontmatter) {
-      console.log('  -> No frontmatter found');
+    // 检查规则是否存在
+    if (!this.settings.rules || this.settings.rules.length === 0) {
+      console.log('  -> No rules defined, skipping');
       return;
     }
 
@@ -354,47 +488,192 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       }
 
       console.log(`  -> Checking rule ${rule.id}...`);
+      console.log(`  -> Watch mode: ${rule.watchMode || 'property'}`);
 
-      // 获取属性值
-      const propertyValue = cache.frontmatter[rule.watchProperty];
-      if (!propertyValue) {
-        console.log(`  -> Property '${rule.watchProperty}' not found, skipping rule ${rule.id}`);
-        continue;
-      }
-
-      // 检查是否匹配
       let matchesTrigger = false;
       let hasBlocking = false;
 
-      if (Array.isArray(propertyValue)) {
-        // 数组类型：使用 includes 检查
-        matchesTrigger = propertyValue.includes(rule.triggerValue);
-        hasBlocking = rule.blockingValue && propertyValue.includes(rule.blockingValue);
-        console.log(`  -> Property '${rule.watchProperty}' (array):`, propertyValue);
-      } else if (typeof propertyValue === 'string') {
-        // 字符串类型：使用完全相等检查
-        matchesTrigger = propertyValue === rule.triggerValue;
-        hasBlocking = rule.blockingValue && propertyValue === rule.blockingValue;
-        console.log(`  -> Property '${rule.watchProperty}' (string):`, propertyValue);
+      if (rule.watchMode === 'filename') {
+        // 文件名监控模式：只在重命名事件时处理
+        if (!isRenamed) {
+          console.log(`  -> Filename monitoring rule ${rule.id}, but not a rename event, skipping`);
+          continue;
+        }
+        
+        const filename = file.name;
+        const pattern = rule.filenamePattern;
+        
+        console.log(`  -> Filename: ${filename}, Pattern: ${pattern}`);
+        
+        if (!pattern) {
+          console.log(`  -> No filename pattern set, skipping rule ${rule.id}`);
+          continue;
+        }
+
+        // 直接使用字符串包含匹配（不区分大小写）
+        matchesTrigger = filename.toLowerCase().includes(pattern.toLowerCase());
+        console.log(`  -> String contains match result: ${matchesTrigger}`);
+        console.log(`  -> Checking if "${filename}" contains "${pattern}"`);
+        
+        hasBlocking = false; // 文件名模式不支持阻止值
       } else {
-        // 其他类型
-        console.log(`  -> Property '${rule.watchProperty}' is not valid type, skipping rule ${rule.id}`);
-        continue;
+        // 属性监控模式
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache || !cache.frontmatter) {
+          console.log('  -> No frontmatter found, skipping rule');
+          continue;
+        }
+
+        // 获取属性值
+        const propertyValue = cache.frontmatter[rule.watchProperty];
+        if (!propertyValue) {
+          console.log(`  -> Property '${rule.watchProperty}' not found, skipping rule ${rule.id}`);
+          continue;
+        }
+
+        if (Array.isArray(propertyValue)) {
+          // 数组类型：使用 includes 检查
+          matchesTrigger = propertyValue.includes(rule.triggerValue);
+          hasBlocking = rule.blockingValue && propertyValue.includes(rule.blockingValue);
+          console.log(`  -> Property '${rule.watchProperty}' (array):`, propertyValue);
+        } else if (typeof propertyValue === 'string') {
+          // 字符串类型：使用完全相等检查
+          matchesTrigger = propertyValue === rule.triggerValue;
+          hasBlocking = rule.blockingValue && propertyValue === rule.blockingValue;
+          console.log(`  -> Property '${rule.watchProperty}' (string):`, propertyValue);
+        } else {
+          // 其他类型
+          console.log(`  -> Property '${rule.watchProperty}' is not valid type, skipping rule ${rule.id}`);
+          continue;
+        }
       }
 
-      console.log(`  -> Matches trigger (${rule.triggerValue}): ${matchesTrigger}, Has blocking (${rule.blockingValue || 'none'}): ${hasBlocking}`);
+      console.log(`  -> Matches trigger: ${matchesTrigger}, Has blocking: ${hasBlocking}`);
 
-      // 匹配且不阻止 → 移动
+      // 匹配且不阻止 → 执行归档操作
       if (matchesTrigger && !hasBlocking) {
-        console.log(`  -> Rule ${rule.id} matched! Moving to ${rule.targetFolder}`);
-        await this.moveFile(file, rule.targetFolder);
-        console.log('=== checkAndMoveFile completed (moved) ===\n');
+        if (rule.archiveFolder) {
+          // 文件夹归档模式
+          console.log(`  -> Rule ${rule.id} matched! Archiving folder to ${rule.targetFolder}`);
+          await this.archiveFolder(file, rule.targetFolder, rule.sourceFolder);
+          console.log('=== checkAndMoveFile completed (folder archived) ===\n');
+        } else if (rule.copyMode) {
+          // 复制文件模式
+          console.log(`  -> Rule ${rule.id} matched! Copying file to ${rule.targetFolder}`);
+          await this.copyFile(file, rule.targetFolder);
+          console.log('=== checkAndMoveFile completed (file copied) ===\n');
+        } else {
+          // 移动文件模式
+          console.log(`  -> Rule ${rule.id} matched! Moving file to ${rule.targetFolder}`);
+          await this.moveFile(file, rule.targetFolder);
+          console.log('=== checkAndMoveFile completed (file moved) ===\n');
+        }
         return;
       }
     }
 
     console.log('  -> No rule matched, no move needed');
     console.log('=== checkAndMoveFile completed (no move) ===\n');
+  }
+
+  async archiveFolder(file, targetDir, sourceFolderPath) {
+    console.log('archiveFolder called for:', file.path, '->', targetDir);
+    console.log('Source folder path:', sourceFolderPath);
+
+    // 检查源文件夹路径是否指定
+    if (!sourceFolderPath || sourceFolderPath.trim() === '') {
+      console.log('No source folder specified, using file parent folder');
+      // 如果没有指定源文件夹，使用文件所在的文件夹
+      const fileParent = file.parent;
+      if (!fileParent) {
+        console.log('File is in root directory, cannot archive folder');
+        new Notice('文件在根目录中，无法归档文件夹');
+        return;
+      }
+      sourceFolderPath = fileParent.path;
+    }
+
+    // 获取源文件夹对象
+    const sourceFolder = this.app.vault.getAbstractFileByPath(sourceFolderPath);
+    if (!sourceFolder || sourceFolder.children === undefined) {
+      console.log('Source folder not found or is not a folder:', sourceFolderPath);
+      new Notice(`源文件夹不存在或不是文件夹: ${sourceFolderPath}`);
+      return;
+    }
+
+    const sourceFolderName = sourceFolder.name;
+    console.log('Source folder name:', sourceFolderName);
+
+    // 目标路径
+    const targetPath = `${targetDir}/${sourceFolderName}`;
+    console.log('Target folder path:', targetPath);
+
+    // 检查目标文件夹是否已存在
+    const existingFolder = this.app.vault.getAbstractFileByPath(targetPath);
+    if (existingFolder) {
+      console.log(`文件夹 ${sourceFolderName} 已存在于目标目录`);
+      new Notice(`文件夹 ${sourceFolderName} 已存在于目标目录`);
+      return;
+    }
+
+    // 确保目标目录存在
+    const targetFolder = this.app.vault.getAbstractFileByPath(targetDir);
+    if (!targetFolder) {
+      console.log('Creating target directory:', targetDir);
+      await this.app.vault.createFolder(targetDir);
+    }
+
+    // 移动文件夹
+    try {
+      console.log('Renaming folder...');
+      await this.app.fileManager.renameFile(sourceFolder, targetPath);
+      console.log(`文件夹 ${sourceFolderName} 已移动到 ${targetDir}`);
+
+      // 显示通知
+      new Notice(`文件夹 "${sourceFolderName}" 已归档到 ${targetDir}`);
+    } catch (error) {
+      console.error('归档文件夹失败:', error);
+      new Notice(`归档文件夹失败: ${error.message}`, 5000);
+    }
+  }
+
+  async copyFile(file, targetDir) {
+    console.log('copyFile called for:', file.path, '->', targetDir);
+
+    // 确保目标目录存在
+    const targetFolder = this.app.vault.getAbstractFileByPath(targetDir);
+    if (!targetFolder) {
+      console.log('Creating target directory:', targetDir);
+      await this.app.vault.createFolder(targetDir);
+    }
+
+    // 目标路径
+    const targetPath = `${targetDir}/${file.name}`;
+    console.log('Target path:', targetPath);
+
+    // 检查目标文件是否已存在
+    const existingFile = this.app.vault.getAbstractFileByPath(targetPath);
+    if (existingFile) {
+      console.log(`文件 ${file.name} 已存在于目标目录`);
+      new Notice(`文件 ${file.name} 已存在于目标目录`);
+      return;
+    }
+
+    // 复制文件
+    try {
+      console.log('Copying file...');
+      // 读取原文件内容
+      const content = await this.app.vault.read(file);
+      // 在目标位置创建新文件
+      await this.app.vault.create(targetPath, content);
+      console.log(`文件 ${file.name} 已复制到 ${targetDir}`);
+
+      // 显示通知
+      new Notice(`文章 "${file.name}" 已复制到 ${targetDir}`);
+    } catch (error) {
+      console.error('复制文件失败:', error);
+      new Notice(`复制文件失败: ${error.message}`, 5000);
+    }
   }
 
   async moveFile(file, targetDir) {
@@ -500,7 +779,12 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
               watchProperty: savedSettings.watchProperty || 'tags',
               triggerValue: savedSettings.publishedTag || '已发',
               targetFolder: savedSettings.targetFolder,
-              blockingValue: savedSettings.pendingTag || '待发'
+              blockingValue: savedSettings.pendingTag || '待发',
+              copyMode: false,
+              watchMode: 'property',
+              archiveFolder: false,
+              filenamePattern: '',
+              sourceFolder: ''
             }
           ]
         };
@@ -625,7 +909,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       // 表头
       const thead = table.createEl('thead');
       const headerRow = thead.createEl('tr');
-      ['', '#', '启用', '监控属性', '触发值', '目标文件夹', '阻止值', '操作'].forEach(text => {
+      ['', '#', '启用', '监控模式', '触发条件', '源文件夹', '目标文件夹', '阻止值', '模式', '操作'].forEach(text => {
         const th = headerRow.createEl('th');
         th.textContent = text;
         th.style.padding = '8px';
@@ -664,17 +948,34 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
         enabledCell.style.padding = '8px';
         enabledCell.style.textAlign = 'center';
 
-        // 监控属性
-        const propCell = row.createEl('td');
-        propCell.textContent = rule.watchProperty;
-        propCell.style.padding = '8px';
+        // 监控模式
+        const watchModeCell = row.createEl('td');
+        watchModeCell.textContent = rule.watchMode === 'filename' ? '📄 文件名' : '🏷️ 属性';
+        watchModeCell.style.padding = '8px';
+        watchModeCell.style.textAlign = 'center';
+        watchModeCell.style.color = rule.watchMode === 'filename' ? 'var(--text-accent)' : 'var(--text-normal)';
 
-        // 触发值
+        // 触发条件
         const triggerCell = row.createEl('td');
-        triggerCell.textContent = rule.triggerValue;
+        if (rule.watchMode === 'filename') {
+          triggerCell.textContent = rule.filenamePattern ? `包含: ${rule.filenamePattern}` : '-';
+        } else {
+          triggerCell.textContent = `${rule.watchProperty}=${rule.triggerValue}`;
+        }
         triggerCell.style.padding = '8px';
         triggerCell.style.fontWeight = 'bold';
         triggerCell.style.color = 'var(--text-accent)';
+
+        // 源文件夹（仅在文件夹归档模式下显示）
+        const sourceFolderCell = row.createEl('td');
+        if (rule.archiveFolder) {
+          sourceFolderCell.textContent = rule.sourceFolder || '-';
+          sourceFolderCell.style.color = rule.sourceFolder ? 'var(--text-normal)' : 'var(--text-muted)';
+        } else {
+          sourceFolderCell.textContent = '-';
+          sourceFolderCell.style.color = 'var(--text-muted)';
+        }
+        sourceFolderCell.style.padding = '8px';
 
         // 目标文件夹
         const targetCell = row.createEl('td');
@@ -683,9 +984,30 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 
         // 阻止值
         const blockingCell = row.createEl('td');
-        blockingCell.textContent = rule.blockingValue || '-';
+        if (rule.watchMode === 'filename') {
+          blockingCell.textContent = '-';
+          blockingCell.style.color = 'var(--text-muted)';
+        } else {
+          blockingCell.textContent = rule.blockingValue || '-';
+          blockingCell.style.color = rule.blockingValue ? 'var(--text-warning)' : 'var(--text-muted)';
+        }
         blockingCell.style.padding = '8px';
-        blockingCell.style.color = rule.blockingValue ? 'var(--text-warning)' : 'var(--text-muted)';
+
+        // 操作模式
+        const modeCell = row.createEl('td');
+        if (rule.archiveFolder) {
+          modeCell.textContent = '📁 文件夹';
+          modeCell.style.color = 'var(--text-warning)';
+          modeCell.style.fontWeight = 'bold';
+        } else if (rule.copyMode) {
+          modeCell.textContent = '📋 复制';
+          modeCell.style.color = 'var(--text-accent)';
+        } else {
+          modeCell.textContent = '➡️ 移动';
+          modeCell.style.color = 'var(--text-normal)';
+        }
+        modeCell.style.padding = '8px';
+        modeCell.style.textAlign = 'center';
 
         // 操作按钮
         const actionsCell = row.createEl('td');

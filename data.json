@@ -4,12 +4,17 @@
   "delayTime": 2000,
   "rules": [
     {
-      "id": 1,
+      "id": 1770622998443,
       "enabled": true,
       "watchProperty": "tags",
       "triggerValue": "已发",
-      "targetFolder": "笔记/自媒体文章笔记",
-      "blockingValue": "未发"
+      "targetFolder": "笔记/学习笔记",
+      "blockingValue": "",
+      "copyMode": true,
+      "watchMode": "filename",
+      "archiveFolder": false,
+      "filenamePattern": "已发",
+      "sourceFolder": "笔记/自媒体文章笔记"
     }
   ]
 }
