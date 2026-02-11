@@ -1114,7 +1114,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorDiv.appendChild(authorName);
 
     const authorButton = document.createElement('button');
-    authorButton.textContent = '小新空';
+    authorButton.textContent = '极拓工坊';
     authorButton.style.margin = '0';
     authorButton.style.padding = '8px 24px';
     authorButton.style.color = 'var(--text-normal)';
@@ -1137,8 +1137,8 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     };
 
     authorButton.onclick = () => {
-      navigator.clipboard.writeText('小新空').then(() => {
-        new Notice('已复制「小新空」到剪贴板，请在微信中搜索');
+      navigator.clipboard.writeText('极拓工坊').then(() => {
+        new Notice('已复制「极拓工坊」到剪贴板，请在微信中搜索');
       }).catch(() => {
         window.open('https://weixin.qq.com/', '_blank');
       });
@@ -1147,14 +1147,14 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorDiv.appendChild(authorButton);
 
     const wechatHint = document.createElement('div');
-    wechatHint.textContent = '微信公众号：小新空';
+    wechatHint.textContent = '微信公众号：极拓工坊';
     wechatHint.style.marginTop = '12px';
     wechatHint.style.color = 'var(--text-muted)';
     wechatHint.style.fontSize = '0.85em';
     authorDiv.appendChild(wechatHint);
 
     const searchHint = document.createElement('div');
-    searchHint.textContent = '点击上方按钮，在微信中搜索「小新空」';
+    searchHint.textContent = '点击上方按钮，在微信中搜索「极拓工坊」';
     searchHint.style.marginTop = '4px';
     searchHint.style.color = 'var(--text-faint)';
     searchHint.style.fontSize = '0.8em';
