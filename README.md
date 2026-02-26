@@ -4,7 +4,7 @@
 
 [English](README_en.md) | **中文**
 
-**官网**: [https://gitapp.net](https://gitapp.net)
+**Website**: [https://gitapp.net](https://gitapp.net)
 
 一个 Obsidian 插件，根据 frontmatter 属性或文件名自动移动或复制文件到指定目录。支持多规则、多属性监控和灵活的目标文件夹配置。
 
