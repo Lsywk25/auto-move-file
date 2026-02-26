@@ -4,7 +4,7 @@
 
 **English** | [中文](README.md)
 
-**Website**: [https://gitapp.net](https://gitapp.net)
+**Website**: [https://gitapp.net](https://gitapp.net)  - Comming soon
 
 An Obsidian plugin that automatically moves or copies files to specified directories based on frontmatter properties or filenames. Supports multiple rules, multiple property monitoring, and flexible target folder configuration.
 
