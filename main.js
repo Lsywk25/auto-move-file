@@ -820,6 +820,9 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
+    
+    // 添加类名，限制样式只作用于插件设置页面
+    containerEl.addClass('auto-move-file-settings');
 
     containerEl.createEl('h2', { text: '自动移动文件插件设置 v3.0' });
 

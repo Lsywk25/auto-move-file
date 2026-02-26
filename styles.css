@@ -123,15 +123,15 @@ hr {
   margin: 30px 0;
 }
 
-/* 标题样式 */
-h2 {
+/* 标题样式 - 限制在插件设置页面内 */
+.auto-move-file-settings h2 {
   color: var(--text-normal);
   border-bottom: 2px solid var(--interactive-accent);
   padding-bottom: 10px;
   margin-bottom: 20px;
 }
 
-h3 {
+.auto-move-file-settings h3 {
   color: var(--text-muted);
   font-size: 0.9em;
   text-transform: uppercase;
