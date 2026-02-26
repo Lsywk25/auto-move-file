@@ -1,238 +1,238 @@
-**Made with ❤️ by Jituo Workshop**
+**Made with ❤️ by 极拓工坊**
 
 # Auto Move File
 
-**English** | [中文](README.md)
+[English](README_en.md) | **中文**
 
-**Website**: [https://gitapp.net](https://gitapp.net)
+**官网**: [https://gitapp.net](https://gitapp.net)
 
-An Obsidian plugin that automatically moves or copies files to specified directories based on frontmatter properties or filenames. Supports multiple rules, multiple property monitoring, and flexible target folder configuration.
+一个 Obsidian 插件，根据 frontmatter 属性或文件名自动移动或复制文件到指定目录。支持多规则、多属性监控和灵活的目标文件夹配置。
 
-## 🚀 Features
+## 🚀 功能特性
 
-- **Auto Move/Copy Files**: Automatically move or copy files based on frontmatter properties or filenames
-- **Multi-Rule Management**: Support for adding multiple rules, executed in order of matching
-- **Rule Sorting**: Support for adjusting rule order via buttons, affecting execution priority
-- **Monitoring Mode Switching**: Support for property monitoring and filename monitoring modes
-- **Execution Priority Mode**: Choose between rule order or property value order for priority
-- **Real-Time Monitoring Toggle**: Enable/disable real-time monitoring; when disabled, only manual button triggers work
-- **Flexible Time Settings**: Support for milliseconds/seconds/minutes delay time units
-- **Custom Monitoring Properties**: Can monitor any frontmatter property such as `tags`, `status`, `category`
-- **Multiple Data Types**: Support for array types (e.g., `tags`) and string types (e.g., `status`)
-- **Folder Archiving**: Support for archiving entire folders to target directories
-- **Scan Scope Settings**: Manually trigger scanning of specific folders only
-- **Folder Selector**: Visual selection of target folders
-- **Full Chinese Support**: Supports Windows paths and Chinese paths
+- **自动移动/复制文件**：根据 frontmatter 属性或文件名自动移动或复制文件
+- **多规则管理**：支持添加多条规则，按匹配顺序执行
+- **规则排序**：支持通过按钮调整规则顺序，影响执行优先级
+- **监控模式切换**：支持属性监控和文件名监控模式
+- **执行优先级模式**：可选择按规则顺序或按属性值顺序决定优先级
+- **实时监控开关**：可开启/关闭实时监控，关闭时只通过手动按钮触发
+- **灵活时间设置**：支持毫秒/秒/分钟三种延迟时间单位
+- **自定义监控属性**：可监控任意 frontmatter 属性如 `tags`、`status`、`category`
+- **多种数据类型**：支持数组类型（如 `tags`）和字符串类型（如 `status`）
+- **文件夹归档**：支持归档整个文件夹到目标目录
+- **扫描范围设置**：手动触发时可限定扫描特定文件夹
+- **文件夹选择器**：可视化选择目标文件夹
+- **完美支持中文**：支持 Windows 路径和中文路径
 
-## 📦 Installation
+## 📦 安装
 
-### Method 1: Manual Installation
+### 方法一：手动安装
 
-1. Download the files from the repository
-2. Extract to your Obsidian vault's `.obsidian/plugins/` directory
-3. Restart Obsidian
-4. Go to **Settings** → **Community Plugins**
-5. Find **Auto Move File** and enable the plugin
+1. 下载仓库的文件
+2. 解压到你的 Obsidian vault 的 `.obsidian/plugins/` 目录
+3. 重启 Obsidian
+4. 进入 **设置** → **社区插件**
+5. 找到 **Auto Move File** 并启用插件
 
-### Method 2: Install from GitHub
+### 方法二：从 GitHub 安装
 
-1. Download `main.js`, `manifest.json`, and `styles.css`
-2. Place files in `.obsidian/plugins/auto-move-file/` directory
-3. Restart Obsidian and enable the plugin
+1. 下载 `main.js`、`manifest.json` 和 `styles.css`
+2. 将文件放入 `.obsidian/plugins/auto-move-file/` 目录
+3. 重启 Obsidian 并启用插件
 
-## 🎯 Usage
+## 🎯 使用说明
 
-### Basic Workflow
+### 基本流程
 
-1. Open plugin settings and add rules
-2. Configure monitoring properties, trigger values, target folders, etc.
-3. Save settings
-4. Modify file frontmatter properties or filenames to match rules
-5. Files automatically move/copy to target directories
+1. 打开插件设置并添加规则
+2. 配置监控属性、触发值、目标文件夹等
+3. 保存设置
+4. 修改文件 frontmatter 属性或文件名以匹配规则
+5. 文件自动移动/复制到目标目录
 
-### Global Configuration
+### 全局配置
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Watch Folder | Only monitor files in specified folder (empty = entire vault) | Empty |
-| Keywords | Keywords that filenames must contain (empty = ignore, comma-separated for multiple) | Empty |
-| Delay Time | Delay before checking after file modification | `2000` |
-| Delay Time Unit | Milliseconds(ms)/Seconds(s)/Minutes(min) | `ms` |
-| Scan Folder | Folder to scan when manually triggered (empty = entire vault) | Empty |
-| Execution Priority Mode | By rule order / By property value order | `By rule order` |
-| Real-Time Monitoring | Enable/disable auto-trigger | `Enabled` |
+| 设置 | 说明 | 默认值 |
+|------|------|--------|
+| 监控文件夹 | 只监控指定文件夹中的文件（空=整个仓库） | 空 |
+| 关键词 | 文件名必须包含的关键词（空=忽略，多个用逗号分隔） | 空 |
+| 延迟时间 | 文件修改后多久开始检查 | `2000` |
+| 延迟时间单位 | 毫秒(ms)/秒(s)/分钟(min) | `ms` |
+| 扫描文件夹 | 手动触发时扫描的文件夹（空=整个仓库） | 空 |
+| 执行优先级模式 | 按规则顺序 / 按属性值顺序 | `按规则顺序` |
+| 实时监控 | 开启/关闭自动触发 | `开启` |
 
-### Rule Configuration
+### 规则配置
 
-| Setting | Description |
-|---------|-------------|
-| Watch Mode | Property monitoring / Filename monitoring |
-| Watch Property | Frontmatter property name to monitor (e.g., `tags`, `status`) |
-| Trigger Value | Trigger archiving when property contains this value |
-| Blocking Value | Do not move if property also contains this value |
-| Target Folder | Target path for file movement |
-| Folder Archive Mode | Archive entire folder (instead of single file) |
-| Copy Mode | Copy file instead of moving (keep original) |
-| Enabled Status | Enable/disable this rule |
+| 设置 | 说明 |
+|------|------|
+| 监控模式 | 属性监控 / 文件名监控 |
+| 监控属性 | 要监控的 frontmatter 属性名（如 `tags`、`status`） |
+| 触发值 | 属性包含此值时触发归档 |
+| 阻止值 | 属性同时包含此值时不移动 |
+| 目标文件夹 | 文件移动的目标路径 |
+| 文件夹归档模式 | 归档整个文件夹（而非单个文件） |
+| 复制模式 | 复制文件而非移动（保留原文件） |
+| 启用状态 | 启用/禁用此规则 |
 
-### Configuration Examples
+### 配置示例
 
-#### Example 1: Monitor tags
+#### 示例 1：监控 tags
 
-**Frontmatter:**
+**Frontmatter：**
 ```yaml
 ---
-tags: [draft, article]
+tags: [待发, 文章]
 ---
 ```
 
-**Rule Configuration:**
-- Watch Property: `tags`
-- Trigger Value: `published`
-- Blocking Value: `draft`
+**规则配置：**
+- 监控属性：`tags`
+- 触发值：`已发`
+- 阻止值：`待发`
 
-**Trigger:** Change `tags` to `[published]` and save
+**触发：** 将 `tags` 改为 `[已发]` 并保存
 
 ---
 
-#### Example 2: Monitor status
+#### 示例 2：监控 status
 
-**Frontmatter:**
+**Frontmatter：**
 ```yaml
 ---
-status: draft
+status: 待发
 ---
 ```
 
-**Rule Configuration:**
-- Watch Property: `status`
-- Trigger Value: `published`
+**规则配置：**
+- 监控属性：`status`
+- 触发值：`已发`
 
-**Trigger:** Change `status` to `published` and save
-
----
-
-#### Example 3: Monitor filename
-
-**Filename:**
-```
-project-published.md
-```
-
-**Rule Configuration:**
-- Watch Mode: `Filename`
-- Filename Contains: `published`
-
-**Trigger:** Triggered when filename contains `published`
+**触发：** 将 `status` 改为 `已发` 并保存
 
 ---
 
-#### Example 4: Multi-Rule Priority
+#### 示例 3：监控文件名
 
-**Rule 1 (Order 1):**
-- Watch Property: `tags`
-- Trigger Value: `published-wechat`
-- Target Folder: `archive/wechat`
+**文件名：**
+```
+项目-已发.md
+```
 
-**Rule 2 (Order 2):**
-- Watch Property: `tags`
-- Trigger Value: `published`
-- Target Folder: `archive/general`
+**规则配置：**
+- 监控模式：`文件名`
+- 文件名包含：`已发`
 
-**File:**
+**触发：** 文件名包含 `已发` 时触发
+
+---
+
+#### 示例 4：多规则优先级
+
+**规则 1（顺序 1）：**
+- 监控属性：`tags`
+- 触发值：`已发-微信`
+- 目标文件夹：`归档/微信`
+
+**规则 2（顺序 2）：**
+- 监控属性：`tags`
+- 触发值：`已发`
+- 目标文件夹：`归档/通用`
+
+**文件：**
 ```yaml
-tags: [published-wechat, published]
+tags: [已发-微信, 已发]
 ```
-→ Moved to `archive/wechat` (Rule 1 priority)
+→ 移动到 `归档/微信`（规则 1 优先）
 
-## ⚙️ Execution Priority Explanation
+## ⚙️ 执行优先级说明
 
-### By Rule Order (Default)
+### 按规则顺序（默认）
 
-Priority is determined by the order of rules in the list. Rules listed first have higher priority.
+优先级由规则在列表中的顺序决定。排在前面的规则优先级更高。
 
-**Use Case**: When you need precise control over which rule matches first
+**使用场景**：需要精确控制哪个规则优先匹配时
 
-### By Property Value Order
+### 按属性值顺序
 
-Priority is determined by the order of properties defined in frontmatter. Rules corresponding to properties defined earlier in the file execute first.
+优先级由 frontmatter 中定义属性的顺序决定。文件中先定义的属性对应的规则先执行。
 
-**Use Case**: When file properties themselves have priority meaning
+**使用场景**：文件属性本身有优先级含义时
 
-**Example:**
+**示例：**
 ```yaml
-status: completed
-tags: [published]
+status: 已完成
+tags: [已发]
 ```
-- Rule 1: Monitor `tags` = `published`
-- Rule 2: Monitor `status` = `completed`
+- 规则 1：监控 `tags` = `已发`
+- 规则 2：监控 `status` = `已完成`
 
-→ Triggers Rule 2 (because `status` appears first in frontmatter)
+→ 触发规则 2（因为 `status` 在 frontmatter 中排在前面）
 
-## 🔧 Quick Commands
+## 🔧 快捷命令
 
-- **Check and Move Current File**: Check if currently open file meets move conditions
-- **Check and Move All Files**: Check all matching files and batch move them
+- **检查并移动当前文件**：检查当前打开的文件是否满足移动条件
+- **检查并移动所有文件**：检查所有匹配的文件并批量移动
 
-## ❓ FAQ
+## ❓ 常见问题
 
-### Q: Files not moving automatically?
+### Q：文件没有自动移动？
 
-**A:** Please check:
-1. Is real-time monitoring enabled?
-2. Is file within watch folder (if set)?
-3. Does filename contain keywords (if set)?
-4. Is the rule enabled?
-5. Are frontmatter property values correct?
-6. Does it contain blocking values?
+**A：** 请检查：
+1. 实时监控是否开启？
+2. 文件是否在监控文件夹内（如果设置了）？
+3. 文件名是否包含关键词（如果设置了）？
+4. 规则是否启用？
+5. frontmatter 属性值是否正确？
+6. 是否包含阻止值？
 
-### Q: How to adjust rule priority?
+### Q：如何调整规则优先级？
 
-**A:** In the rule list, click the ⬆️ or ⬇️ buttons on the right side of the rule to adjust order. Rules listed first have higher priority (when priority mode is set to "By rule order").
+**A：** 在规则列表中，点击规则右侧的 ⬆️ 或 ⬇️ 按钮调整顺序。排在前面的规则优先级更高（当优先级模式设为"按规则顺序"时）。
 
-### Q: How to only trigger manually without auto-archiving?
+### Q：如何只手动触发而不自动归档？
 
-**A:** Turn off the "Real-Time Monitoring" switch. When disabled, file modifications won't auto-trigger; you can only trigger via the "Check All Files" button.
+**A：** 关闭"实时监控"开关。关闭后，文件修改不会自动触发；只能通过"检查所有文件"按钮触发。
 
-### Q: How to debug the plugin?
+### Q：如何调试插件？
 
-**A:** Open Obsidian's Developer Tools (Ctrl + Shift + I), check the Console tab for detailed plugin logs.
+**A：** 打开 Obsidian 开发者工具（Ctrl + Shift + I），查看 Console 标签页的详细插件日志。
 
-## 📝 Changelog
+## 📝 更新日志
 
 ### v3.1.0
-- ✅ Added real-time monitoring toggle
-- ✅ Added delay time unit selection (ms/s/min)
-- ✅ Added scan folder setting (for manual triggering)
-- ✅ Added execution priority mode switching (rule order/property value order)
-- ✅ Added rule up/down move functionality
-- ✅ Optimized folder selector with real-time updates
-- ✅ Author info updated to "Jituo Workshop"
+- ✅ 新增实时监控开关
+- ✅ 新增延迟时间单位选择（毫秒/秒/分钟）
+- ✅ 新增扫描文件夹设置（用于手动触发）
+- ✅ 新增执行优先级模式切换（规则顺序/属性值顺序）
+- ✅ 新增规则上下移动功能
+- ✅ 优化文件夹选择器，支持实时更新
+- ✅ 作者信息更新为"极拓工坊"
 
 ### v3.0.0
-- ✅ Support for multi-rule management
-- ✅ Support for property monitoring and filename monitoring
-- ✅ Support for folder archive mode
-- ✅ Support for batch rule operations
+- ✅ 支持多规则管理
+- ✅ 支持属性监控和文件名监控
+- ✅ 支持文件夹归档模式
+- ✅ 支持批量规则操作
 
 ### v2.4
-- ✅ Added custom monitoring property feature
-- ✅ Support for array and string types
+- ✅ 新增自定义监控属性功能
+- ✅ 支持数组和字符串类型
 
-## 👨‍💻 Author
+## 👨‍💻 作者
 
-**Jituo Workshop**
+**极拓工坊**
 
-Website: [https://gitapp.net](https://gitapp.net)
+官网: [https://gitapp.net](https://gitapp.net)
 
-## 📄 License
+## 📄 许可证
 
 MIT License
 
-## 🤝 Contributing
+## 🤝 贡献
 
-Issues and Pull Requests welcome!
+欢迎提交 Issue 和 Pull Request！
 
-If you like this plugin, please give it a Star ⭐
+如果你喜欢这个插件，请给个 Star ⭐
 
 ---
