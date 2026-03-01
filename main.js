@@ -1079,7 +1079,15 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorButton.style.padding = '8px 24px';
     authorButton.style.fontSize = '1.1em';
     authorButton.onclick = () => {
-      window.open('https://gitapp.net', '_blank');
+      // 使用 Obsidian 的方式打开外部链接
+      try {
+        // 尝试使用 electron 的 shell（桌面版）
+        const { shell } = require('electron');
+        shell.openExternal('https://gitapp.net');
+      } catch (e) {
+        //  fallback 到 window.open
+        window.open('https://gitapp.net', '_blank');
+      }
     };
 
     const websiteHint = authorDiv.createEl('div');
