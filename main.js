@@ -6,6 +6,10 @@ const DEFAULT_SETTINGS = {
   watchFolder: '',      // 监控的文件夹（留空=整个仓库）
   keywords: '',         // 文件名关键词（留空=不过滤）
   delayTime: 2000,      // 延迟执行时间（毫秒）
+  delayTimeUnit: 'ms',  // 延迟时间单位：ms, s, min
+  scanFolder: '',       // 手动扫描的文件夹（留空=整个仓库）
+  priorityMode: 'rule', // 优先级模式：'rule'=按规则顺序, 'property'=按属性值顺序
+  realTimeMonitoring: true, // 实时监控归档：true=开启, false=关闭
 
   // 规则列表（按顺序匹配，只执行第一个）
   rules: [
@@ -16,11 +20,11 @@ const DEFAULT_SETTINGS = {
       triggerValue: '已发',
       targetFolder: '笔记/自媒体文章笔记',
       blockingValue: '待发',
-      copyMode: false,  // true=复制模式，false=移动模式
-      watchMode: 'property',  // 'property'=监控属性, 'filename'=监控文件名
-      archiveFolder: false,  // true=归档整个文件夹, false=归档单个文件
-      filenamePattern: '',  // 文件名包含的字符串
-      sourceFolder: ''  // 源文件夹路径（仅在文件夹归档模式下使用）
+      copyMode: false,
+      watchMode: 'property',
+      archiveFolder: false,
+      filenamePattern: '',
+      sourceFolder: ''
     }
   ]
 };
@@ -28,7 +32,6 @@ const DEFAULT_SETTINGS = {
 // 规范化路径（处理 Windows 路径分隔符）
 function normalizePath(path) {
   if (!path) return '';
-  // 将反斜杠转换为正斜杠
   return path.replace(/\\/g, '/');
 }
 
@@ -38,15 +41,12 @@ function isPathInFolderPath(path, folderPath) {
   const normalizedFolder = normalizePath(folderPath);
 
   if (!normalizedFolder) {
-    // 如果没有设置监控文件夹，监控整个仓库（包括所有子目录）
     return true;
   }
 
-  // 移除开头和结尾的斜杠
   const cleanPath = normalizedPath.replace(/^\/+|\/+$/g, '');
   const cleanFolder = normalizedFolder.replace(/^\/+|\/+$/g, '');
 
-  // 检查路径是否以文件夹路径开头
   return cleanPath.startsWith(cleanFolder + '/') || cleanPath === cleanFolder;
 }
 
@@ -65,7 +65,6 @@ class RuleEditModal extends Modal {
 
     contentEl.createEl('h2', { text: this.rule ? '编辑规则' : '添加规则' });
 
-    // 规则ID（新建规则时自动生成）
     if (!this.rule) {
       this.rule = {
         id: Date.now(),
@@ -93,7 +92,6 @@ class RuleEditModal extends Modal {
           .setValue(this.rule.watchMode || 'property')
           .onChange(value => {
             this.rule.watchMode = value;
-            // 重新打开模态框以更新界面
             this.close();
             new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
           });
@@ -101,7 +99,6 @@ class RuleEditModal extends Modal {
 
     // 根据监控模式显示不同的配置项
     if (this.rule.watchMode === 'property') {
-      // 监控属性
       new Setting(contentEl)
         .setName('监控属性')
         .setDesc('要监控的 frontmatter 属性名（如：tags、status、form 等）')
@@ -114,7 +111,6 @@ class RuleEditModal extends Modal {
             });
         });
 
-      // 触发值
       new Setting(contentEl)
         .setName('触发值')
         .setDesc('当属性包含此值时，触发归档')
@@ -127,7 +123,6 @@ class RuleEditModal extends Modal {
             });
         });
 
-      // 阻止值
       new Setting(contentEl)
         .setName('阻止值')
         .setDesc('如果属性同时包含此值，则不移动（留空则不阻止）')
@@ -140,7 +135,6 @@ class RuleEditModal extends Modal {
             });
         });
     } else {
-      // 文件名模式（仅在文件名监控模式下显示）
       new Setting(contentEl)
         .setName('文件名包含字符')
         .setDesc('输入文件名必须包含的字符串（不区分大小写）')
@@ -153,7 +147,6 @@ class RuleEditModal extends Modal {
             });
         });
     }
-
 
     // 目标文件夹
     new Setting(contentEl)
@@ -179,7 +172,6 @@ class RuleEditModal extends Modal {
           });
       });
 
-
     // 启用状态
     new Setting(contentEl)
       .setName('启用此规则')
@@ -201,7 +193,6 @@ class RuleEditModal extends Modal {
           .setValue(this.rule.archiveFolder || false)
           .onChange(value => {
             this.rule.archiveFolder = value;
-            // 重新打开模态框以更新界面
             this.close();
             new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
           });
@@ -281,18 +272,30 @@ class FolderSuggestModal extends FuzzySuggestModal {
   }
 
   getItems() {
-    // 获取所有文件夹
-    const folders = new Set();
-    const files = this.app.vault.getMarkdownFiles();
-
-    files.forEach(file => {
-      const path = file.parent?.path || '';
-      if (path && path !== '/') {
-        folders.add(path);
+    // 获取所有文件夹（包括空文件夹）
+    const folders = [];
+    
+    // 递归函数来收集所有文件夹
+    const collectFolders = (item) => {
+      if (item.children && Array.isArray(item.children)) {
+        if (item.path !== '/') {
+          folders.push(item.path);
+        }
+        item.children.forEach(child => {
+          collectFolders(child);
+        });
       }
-    });
+    };
+    
+    // 从根目录开始遍历
+    const root = this.app.vault.getRoot();
+    if (root && root.children) {
+      root.children.forEach(child => {
+        collectFolders(child);
+      });
+    }
 
-    return Array.from(folders).sort();
+    return folders.sort();
   }
 
   getItemText(item) {
@@ -311,26 +314,27 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   async onload() {
-    console.log('Auto Move File v3.0 plugin loaded');
-    new Notice('Auto Move File v3.0 plugin loaded');
+    console.log('Auto Move File v3.1.0 plugin loaded');
+    new Notice('Auto Move File v3.1.0 plugin loaded');
 
-    // 加载样式
     this.loadStyles();
-
-    // 加载配置
     await this.loadSettings();
 
     // 监听文件修改事件
     this.registerEvent(
       this.app.vault.on('modify', (file) => {
-        this.onFileModified(file);
+        if (this.settings.realTimeMonitoring !== false) {
+          this.onFileModified(file);
+        }
       })
     );
 
-    // 监听文件重命名事件（用于文件名监控模式）
+    // 监听文件重命名事件
     this.registerEvent(
       this.app.vault.on('rename', (file, oldPath) => {
-        this.onFileRenamed(file, oldPath);
+        if (this.settings.realTimeMonitoring !== false) {
+          this.onFileRenamed(file, oldPath);
+        }
       })
     );
 
@@ -356,12 +360,10 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       },
     });
 
-    // 添加设置页
     this.addSettingTab(new AutoMovePublishedArticlesSettingTab(this.app, this));
   }
 
   loadStyles() {
-    // 加载 CSS 样式
     const stylesPath = '.obsidian/plugins/auto-move-file/styles.css';
     const styles = document.createElement('link');
     styles.rel = 'stylesheet';
@@ -369,21 +371,31 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     document.head.appendChild(styles);
   }
 
+  // 获取延迟时间（转换为毫秒）
+  getDelayTimeInMs() {
+    const value = this.settings.delayTime || 2000;
+    const unit = this.settings.delayTimeUnit || 'ms';
+    switch (unit) {
+      case 's': return value * 1000;
+      case 'min': return value * 60 * 1000;
+      default: return value;
+    }
+  }
+
   async onFileModified(file) {
     console.log('=== File modified event triggered ===');
     console.log('File modified:', file.path);
 
-    // 检查是否有文件名监控模式的规则
     const hasFilenameRules = this.settings.rules && this.settings.rules.some(rule => 
       rule.enabled && rule.watchMode === 'filename'
     );
     
     if (hasFilenameRules) {
-      console.log('  -> Has filename monitoring rules, skipping modify event (waiting for rename)');
+      console.log('  -> Has filename monitoring rules, skipping modify event');
       return;
     }
 
-    // 延迟执行
+    const delayMs = this.getDelayTimeInMs();
     setTimeout(() => {
       console.log('=== Delay elapsed, checking file now ===');
       const freshFile = this.app.vault.getAbstractFileByPath(file.path);
@@ -392,78 +404,58 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       } else {
         console.log('  -> File no longer exists:', file.path);
       }
-    }, this.settings.delayTime);
+    }, delayMs);
   }
 
   async onFileRenamed(file, oldPath) {
     console.log('=== File renamed event triggered ===');
     console.log('File renamed:', oldPath, '->', file.path);
-    console.log('New filename:', file.name);
 
-    // 延迟执行
+    const delayMs = this.getDelayTimeInMs();
     setTimeout(() => {
       console.log('=== Delay elapsed, checking renamed file now ===');
       const freshFile = this.app.vault.getAbstractFileByPath(file.path);
       if (freshFile) {
-        this.checkAndMoveFile(freshFile, true); // 传入true表示这是重命名事件
+        this.checkAndMoveFile(freshFile, true);
       } else {
         console.log('  -> File no longer exists:', file.path);
       }
-    }, this.settings.delayTime);
+    }, delayMs);
   }
 
   async checkAndMoveFile(file, isRenamed = false) {
     console.log('=== checkAndMoveFile called ===');
     console.log('File path:', file.path);
     console.log('File name:', file.name);
-    console.log('Is renamed event:', isRenamed);
 
-    // 只处理 markdown 文件
     if (file.extension !== 'md') {
       console.log('  -> Not a markdown file');
       return;
     }
 
-    // 检查监控文件夹
     const inFolder = isPathInFolderPath(file.path, this.settings.watchFolder);
-    console.log(`  -> In watch folder (${this.settings.watchFolder || 'root'}): ${inFolder}`);
+    console.log(`  -> In watch folder: ${inFolder}`);
 
-    // 检查监控关键词
     let matchesKeywords = true;
     if (this.settings.keywords) {
       const keywords = this.settings.keywords.split(',').map(k => k.trim()).filter(k => k);
       matchesKeywords = keywords.some(keyword => file.name.includes(keyword));
-      console.log(`  -> Matches keywords (${keywords}): ${matchesKeywords}`);
-    } else {
-      console.log('  -> No keywords set (all files match)');
+      console.log(`  -> Matches keywords: ${matchesKeywords}`);
     }
 
-    // 判断是否应该监控：
-    // - 如果设置了文件夹和关键词：AND 关系（两个都要满足）
-    // - 如果只设置了文件夹：只检查文件夹
-    // - 如果只设置了关键词：只检查关键词
-    // - 如果都没设置：监控整个仓库
     const hasFolderSetting = this.settings.watchFolder && this.settings.watchFolder.trim() !== '';
     const hasKeywordsSetting = this.settings.keywords && this.settings.keywords.trim() !== '';
 
     let shouldMonitor = false;
 
     if (hasFolderSetting && hasKeywordsSetting) {
-      // 两个都设置了：AND 关系
       shouldMonitor = inFolder && matchesKeywords;
-      console.log('  -> Both folder and keywords set, using AND logic');
     } else if (hasFolderSetting) {
-      // 只设置了文件夹
       shouldMonitor = inFolder;
-      console.log('  -> Only folder set');
     } else if (hasKeywordsSetting) {
-      // 只设置了关键词
       shouldMonitor = matchesKeywords;
-      console.log('  -> Only keywords set');
     } else {
-      // 都没设置：监控整个仓库
       shouldMonitor = true;
-      console.log('  -> No settings, monitoring all files');
     }
 
     console.log(`  -> Should monitor: ${shouldMonitor}`);
@@ -472,253 +464,198 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       return;
     }
 
-    console.log('  -> File passed all checks');
-
-    // 检查规则是否存在
     if (!this.settings.rules || this.settings.rules.length === 0) {
       console.log('  -> No rules defined, skipping');
       return;
     }
 
-    // 遍历规则，检查是否有匹配的
-    for (const rule of this.settings.rules) {
-      if (!rule.enabled) {
-        console.log(`  -> Rule ${rule.id} is disabled, skipping`);
-        continue;
-      }
+    let enabledRules = this.settings.rules.filter(rule => rule.enabled);
+    
+    if (enabledRules.length === 0) {
+      console.log('  -> No enabled rules, skipping');
+      return;
+    }
 
+    // 根据优先级模式对规则进行排序
+    const priorityMode = this.settings.priorityMode || 'rule';
+    console.log(`  -> Priority mode: ${priorityMode}`);
+
+    if (priorityMode === 'property') {
+      const cache = this.app.metadataCache.getFileCache(file);
+      if (cache && cache.frontmatter) {
+        const propertyOrder = Object.keys(cache.frontmatter);
+        console.log(`  -> Property order:`, propertyOrder);
+        
+        enabledRules = enabledRules.sort((a, b) => {
+          if (a.watchMode === 'filename' && b.watchMode !== 'filename') return 1;
+          if (b.watchMode === 'filename' && a.watchMode !== 'filename') return -1;
+          
+          const indexA = propertyOrder.indexOf(a.watchProperty);
+          const indexB = propertyOrder.indexOf(b.watchProperty);
+          
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          
+          return indexA - indexB;
+        });
+      }
+    }
+
+    for (const rule of enabledRules) {
       console.log(`  -> Checking rule ${rule.id}...`);
-      console.log(`  -> Watch mode: ${rule.watchMode || 'property'}`);
 
       let matchesTrigger = false;
       let hasBlocking = false;
 
       if (rule.watchMode === 'filename') {
-        // 文件名监控模式：只在重命名事件时处理
         if (!isRenamed) {
-          console.log(`  -> Filename monitoring rule ${rule.id}, but not a rename event, skipping`);
+          console.log(`  -> Filename monitoring, skipping`);
           continue;
         }
         
         const filename = file.name;
         const pattern = rule.filenamePattern;
         
-        console.log(`  -> Filename: ${filename}, Pattern: ${pattern}`);
-        
         if (!pattern) {
-          console.log(`  -> No filename pattern set, skipping rule ${rule.id}`);
           continue;
         }
 
-        // 直接使用字符串包含匹配（不区分大小写）
         matchesTrigger = filename.toLowerCase().includes(pattern.toLowerCase());
-        console.log(`  -> String contains match result: ${matchesTrigger}`);
-        console.log(`  -> Checking if "${filename}" contains "${pattern}"`);
-        
-        hasBlocking = false; // 文件名模式不支持阻止值
+        hasBlocking = false;
       } else {
-        // 属性监控模式
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache || !cache.frontmatter) {
-          console.log('  -> No frontmatter found, skipping rule');
           continue;
         }
 
-        // 获取属性值
         const propertyValue = cache.frontmatter[rule.watchProperty];
         if (!propertyValue) {
-          console.log(`  -> Property '${rule.watchProperty}' not found, skipping rule ${rule.id}`);
           continue;
         }
 
         if (Array.isArray(propertyValue)) {
-          // 数组类型：使用 includes 检查
           matchesTrigger = propertyValue.includes(rule.triggerValue);
           hasBlocking = rule.blockingValue && propertyValue.includes(rule.blockingValue);
-          console.log(`  -> Property '${rule.watchProperty}' (array):`, propertyValue);
         } else if (typeof propertyValue === 'string') {
-          // 字符串类型：使用完全相等检查
           matchesTrigger = propertyValue === rule.triggerValue;
           hasBlocking = rule.blockingValue && propertyValue === rule.blockingValue;
-          console.log(`  -> Property '${rule.watchProperty}' (string):`, propertyValue);
         } else {
-          // 其他类型
-          console.log(`  -> Property '${rule.watchProperty}' is not valid type, skipping rule ${rule.id}`);
           continue;
         }
       }
 
-      console.log(`  -> Matches trigger: ${matchesTrigger}, Has blocking: ${hasBlocking}`);
-
-      // 匹配且不阻止 → 执行归档操作
       if (matchesTrigger && !hasBlocking) {
         if (rule.archiveFolder) {
-          // 文件夹归档模式
-          console.log(`  -> Rule ${rule.id} matched! Archiving folder to ${rule.targetFolder}`);
           await this.archiveFolder(file, rule.targetFolder, rule.sourceFolder);
-          console.log('=== checkAndMoveFile completed (folder archived) ===\n');
         } else if (rule.copyMode) {
-          // 复制文件模式
-          console.log(`  -> Rule ${rule.id} matched! Copying file to ${rule.targetFolder}`);
           await this.copyFile(file, rule.targetFolder);
-          console.log('=== checkAndMoveFile completed (file copied) ===\n');
         } else {
-          // 移动文件模式
-          console.log(`  -> Rule ${rule.id} matched! Moving file to ${rule.targetFolder}`);
           await this.moveFile(file, rule.targetFolder);
-          console.log('=== checkAndMoveFile completed (file moved) ===\n');
         }
         return;
       }
     }
 
-    console.log('  -> No rule matched, no move needed');
-    console.log('=== checkAndMoveFile completed (no move) ===\n');
+    console.log('  -> No rule matched');
   }
 
   async archiveFolder(file, targetDir, sourceFolderPath) {
-    console.log('archiveFolder called for:', file.path, '->', targetDir);
-    console.log('Source folder path:', sourceFolderPath);
+    console.log('archiveFolder called:', file.path, '->', targetDir);
 
-    // 检查源文件夹路径是否指定
     if (!sourceFolderPath || sourceFolderPath.trim() === '') {
-      console.log('No source folder specified, using file parent folder');
-      // 如果没有指定源文件夹，使用文件所在的文件夹
       const fileParent = file.parent;
       if (!fileParent) {
-        console.log('File is in root directory, cannot archive folder');
         new Notice('文件在根目录中，无法归档文件夹');
         return;
       }
       sourceFolderPath = fileParent.path;
     }
 
-    // 获取源文件夹对象
     const sourceFolder = this.app.vault.getAbstractFileByPath(sourceFolderPath);
     if (!sourceFolder || sourceFolder.children === undefined) {
-      console.log('Source folder not found or is not a folder:', sourceFolderPath);
-      new Notice(`源文件夹不存在或不是文件夹: ${sourceFolderPath}`);
+      new Notice(`源文件夹不存在: ${sourceFolderPath}`);
       return;
     }
 
     const sourceFolderName = sourceFolder.name;
-    console.log('Source folder name:', sourceFolderName);
-
-    // 目标路径
     const targetPath = `${targetDir}/${sourceFolderName}`;
-    console.log('Target folder path:', targetPath);
 
-    // 检查目标文件夹是否已存在
     const existingFolder = this.app.vault.getAbstractFileByPath(targetPath);
     if (existingFolder) {
-      console.log(`文件夹 ${sourceFolderName} 已存在于目标目录`);
-      new Notice(`文件夹 ${sourceFolderName} 已存在于目标目录`);
+      new Notice(`文件夹 ${sourceFolderName} 已存在`);
       return;
     }
 
-    // 确保目标目录存在
     const targetFolder = this.app.vault.getAbstractFileByPath(targetDir);
     if (!targetFolder) {
-      console.log('Creating target directory:', targetDir);
       await this.app.vault.createFolder(targetDir);
     }
 
-    // 移动文件夹
     try {
-      console.log('Renaming folder...');
       await this.app.fileManager.renameFile(sourceFolder, targetPath);
-      console.log(`文件夹 ${sourceFolderName} 已移动到 ${targetDir}`);
-
-      // 显示通知
-      new Notice(`文件夹 "${sourceFolderName}" 已归档到 ${targetDir}`);
+      new Notice(`文件夹 "${sourceFolderName}" 已归档`);
     } catch (error) {
-      console.error('归档文件夹失败:', error);
-      new Notice(`归档文件夹失败: ${error.message}`, 5000);
+      new Notice(`归档失败: ${error.message}`, 5000);
     }
   }
 
   async copyFile(file, targetDir) {
-    console.log('copyFile called for:', file.path, '->', targetDir);
-
-    // 确保目标目录存在
     const targetFolder = this.app.vault.getAbstractFileByPath(targetDir);
     if (!targetFolder) {
-      console.log('Creating target directory:', targetDir);
       await this.app.vault.createFolder(targetDir);
     }
 
-    // 目标路径
     const targetPath = `${targetDir}/${file.name}`;
-    console.log('Target path:', targetPath);
 
-    // 检查目标文件是否已存在
     const existingFile = this.app.vault.getAbstractFileByPath(targetPath);
     if (existingFile) {
-      console.log(`文件 ${file.name} 已存在于目标目录`);
-      new Notice(`文件 ${file.name} 已存在于目标目录`);
+      new Notice(`文件 ${file.name} 已存在`);
       return;
     }
 
-    // 复制文件
     try {
-      console.log('Copying file...');
-      // 读取原文件内容
       const content = await this.app.vault.read(file);
-      // 在目标位置创建新文件
       await this.app.vault.create(targetPath, content);
-      console.log(`文件 ${file.name} 已复制到 ${targetDir}`);
-
-      // 显示通知
-      new Notice(`文章 "${file.name}" 已复制到 ${targetDir}`);
+      new Notice(`文章 "${file.name}" 已复制`);
     } catch (error) {
-      console.error('复制文件失败:', error);
-      new Notice(`复制文件失败: ${error.message}`, 5000);
+      new Notice(`复制失败: ${error.message}`, 5000);
     }
   }
 
   async moveFile(file, targetDir) {
-    console.log('moveFile called for:', file.path, '->', targetDir);
-
-    // 确保目标目录存在
     const targetFolder = this.app.vault.getAbstractFileByPath(targetDir);
     if (!targetFolder) {
-      console.log('Creating target directory:', targetDir);
       await this.app.vault.createFolder(targetDir);
     }
 
-    // 目标路径
     const targetPath = `${targetDir}/${file.name}`;
-    console.log('Target path:', targetPath);
 
-    // 检查目标文件是否已存在
     const existingFile = this.app.vault.getAbstractFileByPath(targetPath);
     if (existingFile) {
-      console.log(`文件 ${file.name} 已存在于目标目录`);
-      new Notice(`文件 ${file.name} 已存在于目标目录`);
+      new Notice(`文件 ${file.name} 已存在`);
       return;
     }
 
-    // 移动文件
     try {
-      console.log('Renaming file...');
       await this.app.fileManager.renameFile(file, targetPath);
-      console.log(`文件 ${file.name} 已移动到 ${targetDir}`);
-
-      // 显示通知
-      new Notice(`文章 "${file.name}" 已移动到 ${targetDir}`);
+      new Notice(`文章 "${file.name}" 已移动`);
     } catch (error) {
-      console.error('移动文件失败:', error);
-      new Notice(`移动文件失败: ${error.message}`, 5000);
+      new Notice(`移动失败: ${error.message}`, 5000);
     }
   }
 
   async checkAllFiles() {
-    const files = this.vault.getMarkdownFiles();
+    const files = this.app.vault.getMarkdownFiles();
     let checkedCount = 0;
     let movedCount = 0;
 
+    const scanFolder = this.settings.scanFolder || '';
+    
     for (const file of files) {
-      // 检查是否应该监控这个文件
+      if (scanFolder && !isPathInFolderPath(file.path, scanFolder)) {
+        continue;
+      }
+
       const inFolder = isPathInFolderPath(file.path, this.settings.watchFolder);
       let matchesKeywords = true;
 
@@ -733,71 +670,33 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       let shouldMonitor = false;
 
       if (hasFolderSetting && hasKeywordsSetting) {
-        // 两个都设置了：AND 关系
         shouldMonitor = inFolder && matchesKeywords;
       } else if (hasFolderSetting) {
-        // 只设置了文件夹
         shouldMonitor = inFolder;
       } else if (hasKeywordsSetting) {
-        // 只设置了关键词
         shouldMonitor = matchesKeywords;
       } else {
-        // 都没设置：监控根目录
-        shouldMonitor = !file.path.includes('/');
+        shouldMonitor = true;
       }
 
       if (shouldMonitor) {
         checkedCount++;
         const beforePath = file.path;
         await this.checkAndMoveFile(file);
-        // 检查文件是否被移动了
         if (this.app.vault.getAbstractFileByPath(beforePath) === null) {
           movedCount++;
         }
       }
     }
 
-    new Notice(`已检查 ${checkedCount} 个文件，移动了 ${movedCount} 个文件`);
+    const scanInfo = scanFolder ? `（扫描: ${scanFolder}）` : '';
+    new Notice(`已检查 ${checkedCount} 个文件，移动了 ${movedCount} 个文件${scanInfo}`);
   }
 
   async loadSettings() {
     const savedSettings = await this.loadData();
     if (savedSettings) {
-      // 检测是否是旧版配置（有 targetFolder 但没有 rules）
-      if (savedSettings.targetFolder && !savedSettings.rules) {
-        console.log('Migrating old settings to new format...');
-
-        // 迁移旧配置到新格式
-        const migratedSettings = {
-          watchFolder: savedSettings.watchFolder || '',
-          keywords: savedSettings.keywords || '',
-          delayTime: savedSettings.delayTime || 2000,
-          rules: [
-            {
-              id: 1,
-              enabled: true,
-              watchProperty: savedSettings.watchProperty || 'tags',
-              triggerValue: savedSettings.publishedTag || '已发',
-              targetFolder: savedSettings.targetFolder,
-              blockingValue: savedSettings.pendingTag || '待发',
-              copyMode: false,
-              watchMode: 'property',
-              archiveFolder: false,
-              filenamePattern: '',
-              sourceFolder: ''
-            }
-          ]
-        };
-
-        this.settings = { ...DEFAULT_SETTINGS, ...migratedSettings };
-
-        // 保存新配置
-        await this.saveSettings();
-        new Notice('配置已自动迁移到 v3.0 格式');
-      } else {
-        // 新版配置，直接加载
-        this.settings = { ...DEFAULT_SETTINGS, ...savedSettings };
-      }
+      this.settings = { ...DEFAULT_SETTINGS, ...savedSettings };
     }
   }
 
@@ -806,7 +705,7 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   onunload() {
-    console.log('Auto Move Published Articles plugin unloaded');
+    console.log('Auto Move File plugin unloaded');
   }
 }
 
@@ -820,22 +719,19 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    
-    // 添加类名，限制样式只作用于插件设置页面
-    containerEl.addClass('auto-move-file-settings');
 
-    containerEl.createEl('h2', { text: '自动移动文件插件设置 v3.0' });
+    containerEl.createEl('h2', { text: '自动移动文件插件设置 v3.1.0' });
 
-    // ========== 全局配置区 ==========
+    // 全局配置
     containerEl.createEl('h3', { text: '全局配置' });
 
     // 监控文件夹
     new Setting(containerEl)
       .setName('监控文件夹')
-      .setDesc('监控的文件夹路径（留空则监控整个仓库，支持相对路径和绝对路径）。所有规则都要满足此条件。')
+      .setDesc('监控的文件夹路径（留空则监控整个仓库）')
       .addText(text => {
         text
-          .setPlaceholder('留空则忽略此条件')
+          .setPlaceholder('留空则忽略')
           .setValue(this.plugin.settings.watchFolder)
           .onChange(async (value) => {
             this.plugin.settings.watchFolder = normalizePath(value.trim());
@@ -856,10 +752,10 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     // 监控关键词
     new Setting(containerEl)
       .setName('监控关键词')
-      .setDesc('文件名包含的关键词（留空则忽略，多个关键词用逗号分隔）。所有规则都要满足此条件。')
+      .setDesc('文件名包含的关键词（多个用逗号分隔）')
       .addText(text => {
         text
-          .setPlaceholder('留空则忽略此条件')
+          .setPlaceholder('留空则忽略')
           .setValue(this.plugin.settings.keywords)
           .onChange(async (value) => {
             this.plugin.settings.keywords = value;
@@ -867,29 +763,116 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
           });
       });
 
-    // 延迟时间
-    new Setting(containerEl)
-      .setName('延迟时间（毫秒）')
-      .setDesc('文件修改后延迟多久执行检查')
-      .addSlider(slider => {
-        slider
-          .setLimits(500, 5000, 500)
-          .setValue(this.plugin.settings.delayTime)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.delayTime = value;
+    // 延迟时间（数字输入 + 单位选择）
+    const delayTimeSetting = new Setting(containerEl)
+      .setName('延迟时间')
+      .setDesc('文件修改后延迟多久执行检查');
+    
+    delayTimeSetting.addText(text => {
+      text
+        .setPlaceholder('2000')
+        .setValue(String(this.plugin.settings.delayTime))
+        .onChange(async (value) => {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue > 0) {
+            this.plugin.settings.delayTime = numValue;
             await this.plugin.saveSettings();
+          }
+        });
+    });
+    
+    delayTimeSetting.addDropdown(dropdown => {
+      dropdown
+        .addOption('ms', '毫秒 (ms)')
+        .addOption('s', '秒 (s)')
+        .addOption('min', '分钟 (min)')
+        .setValue(this.plugin.settings.delayTimeUnit || 'ms')
+        .onChange(async (newUnit) => {
+          const oldUnit = this.plugin.settings.delayTimeUnit || 'ms';
+          const currentValue = this.plugin.settings.delayTime;
+          
+          let valueInMs = currentValue;
+          if (oldUnit === 's') {
+            valueInMs = currentValue * 1000;
+          } else if (oldUnit === 'min') {
+            valueInMs = currentValue * 60 * 1000;
+          }
+          
+          if (newUnit === 'ms') {
+            this.plugin.settings.delayTime = valueInMs;
+          } else if (newUnit === 's') {
+            this.plugin.settings.delayTime = Math.max(1, Math.round(valueInMs / 1000));
+          } else if (newUnit === 'min') {
+            this.plugin.settings.delayTime = Math.max(1, Math.round(valueInMs / 60 / 1000));
+          }
+          
+          this.plugin.settings.delayTimeUnit = newUnit;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+    });
+
+    // 扫描文件夹
+    new Setting(containerEl)
+      .setName('扫描文件夹')
+      .setDesc('手动触发"检查所有文件"时扫描的文件夹（留空则扫描整个仓库）')
+      .addText(text => {
+        text
+          .setPlaceholder('留空则扫描整个仓库')
+          .setValue(this.plugin.settings.scanFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.scanFolder = normalizePath(value.trim());
+            await this.plugin.saveSettings();
+          });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('选择文件夹')
+          .onClick(() => {
+            new FolderSuggestModal(this.app, async (folder) => {
+              this.plugin.settings.scanFolder = folder;
+              await this.plugin.saveSettings();
+              this.display();
+            }).open();
           });
       });
 
-    // ========== 规则列表区 ==========
+    // 优先级模式
+    new Setting(containerEl)
+      .setName('执行优先级模式')
+      .setDesc('当文件匹配多个规则时，决定哪个规则优先执行')
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('rule', '📋 按规则顺序')
+          .addOption('property', '📝 按属性值顺序')
+          .setValue(this.plugin.settings.priorityMode || 'rule')
+          .onChange(async (value) => {
+            this.plugin.settings.priorityMode = value;
+            await this.plugin.saveSettings();
+            new Notice(`优先级模式: ${value === 'rule' ? '按规则顺序' : '按属性值顺序'}`);
+          });
+      });
+
+    // 实时监控开关
+    new Setting(containerEl)
+      .setName('实时监控归档')
+      .setDesc('开启时自动触发，关闭时只能手动触发')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.realTimeMonitoring !== false)
+          .onChange(async (value) => {
+            this.plugin.settings.realTimeMonitoring = value;
+            await this.plugin.saveSettings();
+            new Notice(value ? '实时监控已开启' : '实时监控已关闭');
+          });
+      });
+
+    // 规则列表
     containerEl.createEl('hr');
     containerEl.createEl('h3', { text: '规则列表' });
 
-    // 添加规则按钮
     const addButton = containerEl.createEl('button', { text: '+ 添加新规则' });
     addButton.style.marginBottom = '10px';
-    addButton.style.padding = '8px 16px';
     addButton.onclick = () => {
       new RuleEditModal(this.app, this.plugin, null, async (rule) => {
         this.plugin.settings.rules.push(rule);
@@ -898,21 +881,16 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       }).open();
     };
 
-    // 规则表格
     if (this.plugin.settings.rules.length === 0) {
-      const emptyText = containerEl.createDiv();
-      emptyText.textContent = '暂无规则，请添加新规则';
-      emptyText.style.color = 'var(--text-muted)';
-      emptyText.style.padding = '20px';
-      emptyText.style.textAlign = 'center';
+      containerEl.createDiv({ text: '暂无规则，请添加新规则' });
     } else {
       const table = containerEl.createEl('table');
-      table.addClass('rules-table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
 
-      // 表头
       const thead = table.createEl('thead');
       const headerRow = thead.createEl('tr');
-      ['', '#', '启用', '监控模式', '触发条件', '源文件夹', '目标文件夹', '阻止值', '模式', '操作'].forEach(text => {
+      ['', '#', '启用', '监控', '触发条件', '源文件夹', '目标文件夹', '阻止值', '模式', '操作'].forEach(text => {
         const th = headerRow.createEl('th');
         th.textContent = text;
         th.style.padding = '8px';
@@ -920,7 +898,6 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
         th.style.borderBottom = '1px solid var(--background-modifier-border)';
       });
 
-      // 表体
       const tbody = table.createEl('tbody');
       this.plugin.settings.rules.forEach((rule, index) => {
         const row = tbody.createEl('tr');
@@ -940,7 +917,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
           this.updateSelectionStatus();
         });
 
-        // 规则编号
+        // 编号
         const idCell = row.createEl('td');
         idCell.textContent = index + 1;
         idCell.style.padding = '8px';
@@ -949,35 +926,22 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
         const enabledCell = row.createEl('td');
         enabledCell.textContent = rule.enabled ? '🔴' : '⭕';
         enabledCell.style.padding = '8px';
-        enabledCell.style.textAlign = 'center';
 
         // 监控模式
         const watchModeCell = row.createEl('td');
         watchModeCell.textContent = rule.watchMode === 'filename' ? '📄 文件名' : '🏷️ 属性';
         watchModeCell.style.padding = '8px';
-        watchModeCell.style.textAlign = 'center';
-        watchModeCell.style.color = rule.watchMode === 'filename' ? 'var(--text-accent)' : 'var(--text-normal)';
 
         // 触发条件
         const triggerCell = row.createEl('td');
-        if (rule.watchMode === 'filename') {
-          triggerCell.textContent = rule.filenamePattern ? `包含: ${rule.filenamePattern}` : '-';
-        } else {
-          triggerCell.textContent = `${rule.watchProperty}=${rule.triggerValue}`;
-        }
+        triggerCell.textContent = rule.watchMode === 'filename' 
+          ? (rule.filenamePattern || '-') 
+          : `${rule.watchProperty}=${rule.triggerValue}`;
         triggerCell.style.padding = '8px';
-        triggerCell.style.fontWeight = 'bold';
-        triggerCell.style.color = 'var(--text-accent)';
 
-        // 源文件夹（仅在文件夹归档模式下显示）
+        // 源文件夹
         const sourceFolderCell = row.createEl('td');
-        if (rule.archiveFolder) {
-          sourceFolderCell.textContent = rule.sourceFolder || '-';
-          sourceFolderCell.style.color = rule.sourceFolder ? 'var(--text-normal)' : 'var(--text-muted)';
-        } else {
-          sourceFolderCell.textContent = '-';
-          sourceFolderCell.style.color = 'var(--text-muted)';
-        }
+        sourceFolderCell.textContent = rule.archiveFolder ? (rule.sourceFolder || '-') : '-';
         sourceFolderCell.style.padding = '8px';
 
         // 目标文件夹
@@ -987,39 +951,45 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 
         // 阻止值
         const blockingCell = row.createEl('td');
-        if (rule.watchMode === 'filename') {
-          blockingCell.textContent = '-';
-          blockingCell.style.color = 'var(--text-muted)';
-        } else {
-          blockingCell.textContent = rule.blockingValue || '-';
-          blockingCell.style.color = rule.blockingValue ? 'var(--text-warning)' : 'var(--text-muted)';
-        }
+        blockingCell.textContent = rule.blockingValue || '-';
         blockingCell.style.padding = '8px';
 
-        // 操作模式
+        // 模式
         const modeCell = row.createEl('td');
         if (rule.archiveFolder) {
           modeCell.textContent = '📁 文件夹';
-          modeCell.style.color = 'var(--text-warning)';
-          modeCell.style.fontWeight = 'bold';
         } else if (rule.copyMode) {
           modeCell.textContent = '📋 复制';
-          modeCell.style.color = 'var(--text-accent)';
         } else {
           modeCell.textContent = '➡️ 移动';
-          modeCell.style.color = 'var(--text-normal)';
         }
         modeCell.style.padding = '8px';
-        modeCell.style.textAlign = 'center';
 
         // 操作按钮
         const actionsCell = row.createEl('td');
         actionsCell.style.padding = '8px';
 
+        // 上移按钮
+        if (index > 0) {
+          const upBtn = actionsCell.createEl('button', { text: '⬆️' });
+          upBtn.style.marginRight = '5px';
+          upBtn.onclick = () => {
+            this.moveRule(index, index - 1);
+          };
+        }
+
+        // 下移按钮
+        if (index < this.plugin.settings.rules.length - 1) {
+          const downBtn = actionsCell.createEl('button', { text: '⬇️' });
+          downBtn.style.marginRight = '5px';
+          downBtn.onclick = () => {
+            this.moveRule(index, index + 1);
+          };
+        }
+
         // 编辑按钮
         const editBtn = actionsCell.createEl('button', { text: '✏️' });
         editBtn.style.marginRight = '5px';
-        editBtn.style.padding = '4px 8px';
         editBtn.onclick = () => {
           new RuleEditModal(this.app, this.plugin, rule, async (updatedRule) => {
             const ruleIndex = this.plugin.settings.rules.findIndex(r => r.id === rule.id);
@@ -1033,7 +1003,6 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 
         // 删除按钮
         const deleteBtn = actionsCell.createEl('button', { text: '🗑️' });
-        deleteBtn.style.padding = '4px 8px';
         deleteBtn.onclick = () => {
           this.plugin.settings.rules = this.plugin.settings.rules.filter(r => r.id !== rule.id);
           this.plugin.saveSettings();
@@ -1042,20 +1011,18 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       });
     }
 
-    // ========== 批量操作栏 ==========
+    // 批量操作
     if (this.plugin.settings.rules.length > 0) {
       containerEl.createEl('hr');
       const batchDiv = containerEl.createDiv();
-      batchDiv.style.marginTop = '10px';
-
+      
       this.selectionStatus = batchDiv.createDiv();
       this.selectionStatus.textContent = '已选中 0 个规则';
-      this.selectionStatus.style.marginBottom = '10px';
-      this.selectionStatus.style.fontWeight = 'bold';
-
+      
       const buttonContainer = batchDiv.createDiv();
       buttonContainer.style.display = 'flex';
       buttonContainer.style.gap = '10px';
+      buttonContainer.style.marginTop = '10px';
 
       const deleteButton = buttonContainer.createEl('button', { text: '🗑️ 删除选中' });
       deleteButton.onclick = () => this.batchDelete();
@@ -1067,9 +1034,9 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       enableButton.onclick = () => this.batchSetEnabled(true);
     }
 
-    // ========== 测试按钮 ==========
+    // 手动操作
     containerEl.createEl('hr');
-    containerEl.createEl('h3', { text: '测试功能' });
+    containerEl.createEl('h3', { text: '手动操作' });
 
     new Setting(containerEl)
       .setName('测试当前文件')
@@ -1098,70 +1065,27 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
           });
       });
 
-    // ========== 作者信息 ==========
+    // 作者信息
     containerEl.createEl('hr');
-
     const authorDiv = containerEl.createDiv();
-    authorDiv.style.padding = '15px';
-    authorDiv.style.marginTop = '20px';
     authorDiv.style.textAlign = 'center';
-    authorDiv.style.backgroundColor = 'var(--background-secondary)';
-    authorDiv.style.borderRadius = '8px';
-    authorDiv.style.border = '1px solid var(--background-modifier-border)';
+    authorDiv.style.padding = '20px';
 
-    const authorName = document.createElement('h4');
-    authorName.textContent = '作者';
-    authorName.style.margin = '0 0 5px 0';
-    authorName.style.color = 'var(--text-accent)';
-    authorName.style.fontSize = '1.1em';
-    authorDiv.appendChild(authorName);
+    const authorTitle = authorDiv.createEl('h4');
+    authorTitle.textContent = '作者';
 
-    const authorButton = document.createElement('button');
+    const authorButton = authorDiv.createEl('button');
     authorButton.textContent = '极拓工坊';
-    authorButton.style.margin = '0';
     authorButton.style.padding = '8px 24px';
-    authorButton.style.color = 'var(--text-normal)';
     authorButton.style.fontSize = '1.1em';
-    authorButton.style.fontWeight = '600';
-    authorButton.style.border = '2px solid var(--interactive-accent)';
-    authorButton.style.borderRadius = '6px';
-    authorButton.style.backgroundColor = 'var(--interactive-accent-hover)';
-    authorButton.style.cursor = 'pointer';
-    authorButton.style.transition = 'all 0.2s ease';
-    authorButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-
-    authorButton.onmouseenter = () => {
-      authorButton.style.transform = 'translateY(-2px)';
-      authorButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-    };
-    authorButton.onmouseleave = () => {
-      authorButton.style.transform = 'translateY(0)';
-      authorButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-    };
-
     authorButton.onclick = () => {
-      navigator.clipboard.writeText('极拓工坊').then(() => {
-        new Notice('已复制「极拓工坊」到剪贴板，请在微信中搜索');
-      }).catch(() => {
-        window.open('https://weixin.qq.com/', '_blank');
-      });
+      window.open('https://gitapp.net', '_blank');
     };
 
-    authorDiv.appendChild(authorButton);
-
-    const wechatHint = document.createElement('div');
-    wechatHint.textContent = '微信公众号：极拓工坊';
-    wechatHint.style.marginTop = '12px';
-    wechatHint.style.color = 'var(--text-muted)';
-    wechatHint.style.fontSize = '0.85em';
-    authorDiv.appendChild(wechatHint);
-
-    const searchHint = document.createElement('div');
-    searchHint.textContent = '点击上方按钮，在微信中搜索「极拓工坊」';
-    searchHint.style.marginTop = '4px';
-    searchHint.style.color = 'var(--text-faint)';
-    searchHint.style.fontSize = '0.8em';
-    authorDiv.appendChild(searchHint);
+    const websiteHint = authorDiv.createEl('div');
+    websiteHint.textContent = 'https://gitapp.net';
+    websiteHint.style.marginTop = '10px';
+    websiteHint.style.color = 'var(--text-muted)';
   }
 
   updateSelectionStatus() {
@@ -1175,12 +1099,11 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       new Notice('请先选择要删除的规则');
       return;
     }
-
     this.plugin.settings.rules = this.plugin.settings.rules.filter(r => !this.selectedRules.has(r.id));
     await this.plugin.saveSettings();
     this.selectedRules.clear();
     this.display();
-    new Notice(`已删除 ${this.selectedRules.size} 个规则`);
+    new Notice('已删除选中的规则');
   }
 
   async batchSetEnabled(enabled) {
@@ -1188,16 +1111,28 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       new Notice('请先选择要操作的规则');
       return;
     }
-
     this.plugin.settings.rules.forEach(rule => {
       if (this.selectedRules.has(rule.id)) {
         rule.enabled = enabled;
       }
     });
-
     await this.plugin.saveSettings();
     this.display();
-    new Notice(`已${enabled ? '启用' : '禁用'} ${this.selectedRules.size} 个规则`);
+    new Notice(`${enabled ? '启用' : '禁用'}了选中的规则`);
+  }
+
+  async moveRule(fromIndex, toIndex) {
+    const rules = this.plugin.settings.rules;
+    if (fromIndex < 0 || fromIndex >= rules.length) return;
+    if (toIndex < 0 || toIndex >= rules.length) return;
+    
+    const temp = rules[fromIndex];
+    rules[fromIndex] = rules[toIndex];
+    rules[toIndex] = temp;
+    
+    await this.plugin.saveSettings();
+    this.display();
+    new Notice('规则顺序已更新');
   }
 }
 
