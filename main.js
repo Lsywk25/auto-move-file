@@ -1,4 +1,10 @@
-const { Plugin, Notice, PluginSettingTab, Setting, FuzzySuggestModal, Modal } = require('obsidian');
+const { Plugin, Notice, PluginSettingTab, Setting, FuzzySuggestModal, Modal, Platform } = require('obsidian');
+
+// 调试开关：设为 true 时在控制台输出详细日志
+const DEBUG = false;
+function debugLog(...args) {
+  if (DEBUG) debugLog(...args);
+}
 
 // 默认配置
 const DEFAULT_SETTINGS = {
@@ -22,6 +28,7 @@ const DEFAULT_SETTINGS = {
       blockingValue: '待发',
       copyMode: false,
       watchMode: 'property',
+      matchMode: 'exact',
       archiveFolder: false,
       filenamePattern: '',
       sourceFolder: ''
@@ -50,6 +57,25 @@ function isPathInFolderPath(path, folderPath) {
   return cleanPath.startsWith(cleanFolder + '/') || cleanPath === cleanFolder;
 }
 
+// 获取规则的匹配方式（旧数据兼容：属性规则默认精确，文件名规则默认包含）
+function getMatchMode(rule) {
+  if (rule.matchMode === 'fuzzy' || rule.matchMode === 'exact') {
+    return rule.matchMode;
+  }
+  return rule.watchMode === 'filename' ? 'fuzzy' : 'exact';
+}
+
+// 模糊匹配：按正则表达式匹配（不区分大小写），非法正则自动退回包含匹配
+function fuzzyMatch(text, pattern) {
+  const target = String(text);
+  const p = String(pattern);
+  try {
+    return new RegExp(p, 'i').test(target);
+  } catch (e) {
+    return target.toLowerCase().includes(p.toLowerCase());
+  }
+}
+
 // 规则编辑模态框
 class RuleEditModal extends Modal {
   constructor(app, plugin, rule, onSave) {
@@ -62,6 +88,7 @@ class RuleEditModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
+    contentEl.addClass('auto-move-file-modal');
 
     contentEl.createEl('h2', { text: this.rule ? '编辑规则' : '添加规则' });
 
@@ -75,6 +102,7 @@ class RuleEditModal extends Modal {
         blockingValue: '',
         copyMode: false,
         watchMode: 'property',
+        matchMode: 'exact',
         archiveFolder: false,
         filenamePattern: '',
         sourceFolder: ''
@@ -92,6 +120,8 @@ class RuleEditModal extends Modal {
           .setValue(this.rule.watchMode || 'property')
           .onChange(value => {
             this.rule.watchMode = value;
+            // 切换监控模式时重置为该模式的推荐匹配方式
+            this.rule.matchMode = value === 'filename' ? 'fuzzy' : 'exact';
             this.close();
             new RuleEditModal(this.app, this.plugin, this.rule, this.onSave).open();
           });
@@ -147,6 +177,24 @@ class RuleEditModal extends Modal {
             });
         });
     }
+
+    // 匹配方式（精确 / 模糊）
+    const matchModeDesc = this.rule.watchMode === 'filename'
+      ? '模糊：文件名包含关键字即触发（如填"笔记"则所有含"笔记"的文件名都触发，不区分大小写）；精确：文件名（不含扩展名）完全一致'
+      : '模糊：属性值包含触发值即触发（如属性值为"已发布"时填"已发"即可，不区分大小写）；精确：属性值必须完全等于触发值';
+
+    new Setting(contentEl)
+      .setName('匹配方式')
+      .setDesc(matchModeDesc)
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('exact', '🎯 精确匹配')
+          .addOption('fuzzy', '🔍 模糊匹配')
+          .setValue(getMatchMode(this.rule))
+          .onChange(value => {
+            this.rule.matchMode = value;
+          });
+      });
 
     // 目标文件夹
     new Setting(contentEl)
@@ -314,10 +362,8 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   async onload() {
-    console.log('Auto Move File v3.1.0 plugin loaded');
-    new Notice('Auto Move File v3.1.0 plugin loaded');
+    debugLog(`Auto Move File ${this.manifest.version} plugin loaded`);
 
-    this.loadStyles();
     await this.loadSettings();
 
     // 监听文件修改事件
@@ -363,14 +409,6 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     this.addSettingTab(new AutoMovePublishedArticlesSettingTab(this.app, this));
   }
 
-  loadStyles() {
-    const stylesPath = '.obsidian/plugins/auto-move-file/styles.css';
-    const styles = document.createElement('link');
-    styles.rel = 'stylesheet';
-    styles.href = stylesPath;
-    document.head.appendChild(styles);
-  }
-
   // 获取延迟时间（转换为毫秒）
   getDelayTimeInMs() {
     const value = this.settings.delayTime || 2000;
@@ -383,64 +421,64 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   async onFileModified(file) {
-    console.log('=== File modified event triggered ===');
-    console.log('File modified:', file.path);
+    debugLog('=== File modified event triggered ===');
+    debugLog('File modified:', file.path);
 
     const hasFilenameRules = this.settings.rules && this.settings.rules.some(rule => 
       rule.enabled && rule.watchMode === 'filename'
     );
     
     if (hasFilenameRules) {
-      console.log('  -> Has filename monitoring rules, skipping modify event');
+      debugLog('  -> Has filename monitoring rules, skipping modify event');
       return;
     }
 
     const delayMs = this.getDelayTimeInMs();
     setTimeout(() => {
-      console.log('=== Delay elapsed, checking file now ===');
+      debugLog('=== Delay elapsed, checking file now ===');
       const freshFile = this.app.vault.getAbstractFileByPath(file.path);
       if (freshFile) {
         this.checkAndMoveFile(freshFile);
       } else {
-        console.log('  -> File no longer exists:', file.path);
+        debugLog('  -> File no longer exists:', file.path);
       }
     }, delayMs);
   }
 
   async onFileRenamed(file, oldPath) {
-    console.log('=== File renamed event triggered ===');
-    console.log('File renamed:', oldPath, '->', file.path);
+    debugLog('=== File renamed event triggered ===');
+    debugLog('File renamed:', oldPath, '->', file.path);
 
     const delayMs = this.getDelayTimeInMs();
     setTimeout(() => {
-      console.log('=== Delay elapsed, checking renamed file now ===');
+      debugLog('=== Delay elapsed, checking renamed file now ===');
       const freshFile = this.app.vault.getAbstractFileByPath(file.path);
       if (freshFile) {
         this.checkAndMoveFile(freshFile, true);
       } else {
-        console.log('  -> File no longer exists:', file.path);
+        debugLog('  -> File no longer exists:', file.path);
       }
     }, delayMs);
   }
 
   async checkAndMoveFile(file, isRenamed = false) {
-    console.log('=== checkAndMoveFile called ===');
-    console.log('File path:', file.path);
-    console.log('File name:', file.name);
+    debugLog('=== checkAndMoveFile called ===');
+    debugLog('File path:', file.path);
+    debugLog('File name:', file.name);
 
     if (file.extension !== 'md') {
-      console.log('  -> Not a markdown file');
+      debugLog('  -> Not a markdown file');
       return;
     }
 
     const inFolder = isPathInFolderPath(file.path, this.settings.watchFolder);
-    console.log(`  -> In watch folder: ${inFolder}`);
+    debugLog(`  -> In watch folder: ${inFolder}`);
 
     let matchesKeywords = true;
     if (this.settings.keywords) {
       const keywords = this.settings.keywords.split(',').map(k => k.trim()).filter(k => k);
       matchesKeywords = keywords.some(keyword => file.name.includes(keyword));
-      console.log(`  -> Matches keywords: ${matchesKeywords}`);
+      debugLog(`  -> Matches keywords: ${matchesKeywords}`);
     }
 
     const hasFolderSetting = this.settings.watchFolder && this.settings.watchFolder.trim() !== '';
@@ -458,33 +496,33 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       shouldMonitor = true;
     }
 
-    console.log(`  -> Should monitor: ${shouldMonitor}`);
+    debugLog(`  -> Should monitor: ${shouldMonitor}`);
 
     if (!shouldMonitor) {
       return;
     }
 
     if (!this.settings.rules || this.settings.rules.length === 0) {
-      console.log('  -> No rules defined, skipping');
+      debugLog('  -> No rules defined, skipping');
       return;
     }
 
     let enabledRules = this.settings.rules.filter(rule => rule.enabled);
     
     if (enabledRules.length === 0) {
-      console.log('  -> No enabled rules, skipping');
+      debugLog('  -> No enabled rules, skipping');
       return;
     }
 
     // 根据优先级模式对规则进行排序
     const priorityMode = this.settings.priorityMode || 'rule';
-    console.log(`  -> Priority mode: ${priorityMode}`);
+    debugLog(`  -> Priority mode: ${priorityMode}`);
 
     if (priorityMode === 'property') {
       const cache = this.app.metadataCache.getFileCache(file);
       if (cache && cache.frontmatter) {
         const propertyOrder = Object.keys(cache.frontmatter);
-        console.log(`  -> Property order:`, propertyOrder);
+        debugLog(`  -> Property order:`, propertyOrder);
         
         enabledRules = enabledRules.sort((a, b) => {
           if (a.watchMode === 'filename' && b.watchMode !== 'filename') return 1;
@@ -502,14 +540,14 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
     }
 
     for (const rule of enabledRules) {
-      console.log(`  -> Checking rule ${rule.id}...`);
+      debugLog(`  -> Checking rule ${rule.id}...`);
 
       let matchesTrigger = false;
       let hasBlocking = false;
 
       if (rule.watchMode === 'filename') {
         if (!isRenamed) {
-          console.log(`  -> Filename monitoring, skipping`);
+          debugLog(`  -> Filename monitoring, skipping`);
           continue;
         }
         
@@ -520,7 +558,12 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
           continue;
         }
 
-        matchesTrigger = filename.toLowerCase().includes(pattern.toLowerCase());
+        if (getMatchMode(rule) === 'fuzzy') {
+          matchesTrigger = fuzzyMatch(filename, pattern);
+        } else {
+          const basename = file.basename || filename.replace(/\.[^.]+$/, '');
+          matchesTrigger = basename.toLowerCase() === pattern.toLowerCase();
+        }
         hasBlocking = false;
       } else {
         const cache = this.app.metadataCache.getFileCache(file);
@@ -533,14 +576,25 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
           continue;
         }
 
+        const isFuzzy = getMatchMode(rule) === 'fuzzy';
+
+        // 把属性值统一转成字符串列表：数组逐项转换，标量按单个值处理
+        let values;
         if (Array.isArray(propertyValue)) {
-          matchesTrigger = propertyValue.includes(rule.triggerValue);
-          hasBlocking = rule.blockingValue && propertyValue.includes(rule.blockingValue);
-        } else if (typeof propertyValue === 'string') {
-          matchesTrigger = propertyValue === rule.triggerValue;
-          hasBlocking = rule.blockingValue && propertyValue === rule.blockingValue;
+          values = propertyValue.map(v => String(v));
+        } else if (typeof propertyValue === 'string' || isFuzzy) {
+          values = [String(propertyValue)];
         } else {
+          // 精确模式下仅支持字符串和数组
           continue;
+        }
+
+        if (isFuzzy) {
+          matchesTrigger = values.some(v => fuzzyMatch(v, rule.triggerValue));
+          hasBlocking = !!rule.blockingValue && values.some(v => fuzzyMatch(v, rule.blockingValue));
+        } else {
+          matchesTrigger = values.includes(rule.triggerValue);
+          hasBlocking = !!rule.blockingValue && values.includes(rule.blockingValue);
         }
       }
 
@@ -556,11 +610,11 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
       }
     }
 
-    console.log('  -> No rule matched');
+    debugLog('  -> No rule matched');
   }
 
   async archiveFolder(file, targetDir, sourceFolderPath) {
-    console.log('archiveFolder called:', file.path, '->', targetDir);
+    debugLog('archiveFolder called:', file.path, '->', targetDir);
 
     if (!sourceFolderPath || sourceFolderPath.trim() === '') {
       const fileParent = file.parent;
@@ -705,7 +759,7 @@ class AutoMovePublishedArticlesPlugin extends Plugin {
   }
 
   onunload() {
-    console.log('Auto Move File plugin unloaded');
+    debugLog('Auto Move File plugin unloaded');
   }
 }
 
@@ -719,8 +773,9 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass('auto-move-file-settings');
 
-    containerEl.createEl('h2', { text: '自动移动文件插件设置 v3.1.0' });
+    containerEl.createEl('h2', { text: `自动移动文件插件设置 v${this.plugin.manifest.version}` });
 
     // 全局配置
     containerEl.createEl('h3', { text: '全局配置' });
@@ -885,6 +940,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
       containerEl.createDiv({ text: '暂无规则，请添加新规则' });
     } else {
       const table = containerEl.createEl('table');
+      table.addClass('rules-table');
       table.style.width = '100%';
       table.style.borderCollapse = 'collapse';
 
@@ -906,7 +962,8 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
         // 复选框
         const checkboxCell = row.createEl('td');
         checkboxCell.style.padding = '8px';
-        const checkbox = checkboxCell.createEl('input', { type: 'checkbox' });
+        const checkbox = checkboxCell.createEl('input');
+        checkbox.type = 'checkbox';
         checkbox.checked = this.selectedRules.has(rule.id);
         checkbox.addEventListener('change', () => {
           if (checkbox.checked) {
@@ -924,7 +981,7 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 
         // 启用状态
         const enabledCell = row.createEl('td');
-        enabledCell.textContent = rule.enabled ? '🔴' : '⭕';
+        enabledCell.textContent = rule.enabled ? '🟢' : '⭕';
         enabledCell.style.padding = '8px';
 
         // 监控模式
@@ -934,9 +991,10 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 
         // 触发条件
         const triggerCell = row.createEl('td');
-        triggerCell.textContent = rule.watchMode === 'filename' 
-          ? (rule.filenamePattern || '-') 
-          : `${rule.watchProperty}=${rule.triggerValue}`;
+        const matchModeLabel = getMatchMode(rule) === 'fuzzy' ? '🔍 模糊' : '🎯 精确';
+        triggerCell.textContent = rule.watchMode === 'filename'
+          ? `${rule.filenamePattern || '-'}（${matchModeLabel}）`
+          : `${rule.watchProperty}=${rule.triggerValue}（${matchModeLabel}）`;
         triggerCell.style.padding = '8px';
 
         // 源文件夹
@@ -1079,14 +1137,12 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
     authorButton.style.padding = '8px 24px';
     authorButton.style.fontSize = '1.1em';
     authorButton.onclick = () => {
-      // 使用 Obsidian 的方式打开外部链接
-      try {
-        // 尝试使用 electron 的 shell（桌面版）
+      const url = 'https://gitapp.net';
+      if (Platform.isDesktopApp) {
         const { shell } = require('electron');
-        shell.openExternal('https://gitapp.net');
-      } catch (e) {
-        //  fallback 到 window.open
-        window.open('https://gitapp.net', '_blank');
+        shell.openExternal(url);
+      } else {
+        window.open(url, '_blank');
       }
     };
 
@@ -1145,3 +1201,8 @@ class AutoMovePublishedArticlesSettingTab extends PluginSettingTab {
 }
 
 module.exports = AutoMovePublishedArticlesPlugin;
+// 导出内部函数供自动化测试使用（Obsidian 只使用默认导出，不影响插件运行）
+module.exports.RuleEditModal = RuleEditModal;
+module.exports.getMatchMode = getMatchMode;
+module.exports.fuzzyMatch = fuzzyMatch;
+module.exports.isPathInFolderPath = isPathInFolderPath;

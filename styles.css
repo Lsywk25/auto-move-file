@@ -116,8 +116,8 @@
   margin: 10px 0;
 }
 
-/* 分隔线 */
-hr {
+/* 分隔线 - 仅作用于本插件设置页面 */
+.auto-move-file-settings hr {
   border: none;
   border-top: 2px solid var(--background-modifier-border);
   margin: 30px 0;
@@ -139,15 +139,15 @@ hr {
   margin: 20px 0 15px 0;
 }
 
-/* 规则编辑模态框 */
-.modal button {
+/* 规则编辑模态框 - 仅作用于本插件的模态框 */
+.auto-move-file-modal button {
   padding: 8px 16px;
   border-radius: 6px;
   font-weight: 500;
   transition: all 0.2s ease;
 }
 
-.modal button:hover {
+.auto-move-file-modal button:hover {
   transform: translateY(-2px);
 }
 

@@ -1,9 +1,9 @@
 {
   "id": "auto-move-file",
   "name": "Auto Move File",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "minAppVersion": "0.15.0",
-  "description": "自动移动文件插件 v3.1 - 支持实时监控开关、延迟时间单位、扫描文件夹、优先级模式、规则排序",
+  "description": "Automatically move or copy notes to target folders based on frontmatter properties or file names, with flexible rules and exact or fuzzy matching.",
   "author": "极拓工坊",
   "authorUrl": "https://gitapp.net",
   "isDesktopOnly": false

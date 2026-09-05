@@ -1,0 +1,13 @@
+{
+  "name": "auto-move-file",
+  "version": "3.2.0",
+  "description": "Obsidian plugin - automatically move or copy notes based on frontmatter properties or filenames",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/ui.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

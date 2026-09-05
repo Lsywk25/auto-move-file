@@ -11,6 +11,7 @@ An Obsidian plugin that automatically moves or copies files to specified directo
 ## 🚀 Features
 
 - **Auto Move/Copy Files**: Automatically move or copy files based on frontmatter properties or filenames
+- **Exact/Fuzzy Matching**: Each rule can independently choose its matching mode to fit different archiving needs
 - **Multi-Rule Management**: Support for adding multiple rules, executed in order of matching
 - **Rule Sorting**: Support for adjusting rule order via buttons, affecting execution priority
 - **Monitoring Mode Switching**: Support for property monitoring and filename monitoring modes
@@ -67,6 +68,7 @@ An Obsidian plugin that automatically moves or copies files to specified directo
 | Setting | Description |
 |---------|-------------|
 | Watch Mode | Property monitoring / Filename monitoring |
+| Match Mode | 🎯 Exact match / 🔍 Fuzzy match |
 | Watch Property | Frontmatter property name to monitor (e.g., `tags`, `status`) |
 | Trigger Value | Trigger archiving when property contains this value |
 | Blocking Value | Do not move if property also contains this value |
@@ -145,6 +147,32 @@ tags: [published-wechat, published]
 ```
 → Moved to `archive/wechat` (Rule 1 priority)
 
+## 🎚️ Match Mode Explanation
+
+Each rule can independently choose between "Exact Match" and "Fuzzy Match":
+
+### 🎯 Exact Match
+
+- **Property monitoring**: Property value must be **exactly equal** to the trigger value
+  - `status: published-article` with trigger value `published` → ❌ No trigger
+  - For array types (e.g., `tags`), one item must exactly equal the trigger value
+- **Filename monitoring**: Filename (without extension) must be exactly identical
+  - Filename `published.md` with keyword `published` → ✅ Triggers
+  - Filename `project-published.md` with keyword `published` → ❌ No trigger
+
+### 🔍 Fuzzy Match (Contains)
+
+- **Property monitoring**: Triggers when property value **contains** the trigger value (case-insensitive)
+  - `status: published-article` with trigger value `published` → ✅ Triggers
+  - `tags: [article/published/xiaohongshu]` with trigger value `published` → ✅ Triggers
+- **Filename monitoring**: Triggers when filename **contains** the keyword (case-insensitive)
+  - With keyword `notes`, filenames like `daily-notes.md`, `notes2026.md`, `my-notes.md` all trigger
+  - Filename `project-published.md` with keyword `published` → ✅ Triggers
+
+> The blocking value uses the same match mode as the trigger value. Backward compatible: in existing rules, property monitoring keeps exact matching and filename monitoring keeps contains matching by default; you can change this when editing a rule.
+>
+> Advanced: fuzzy match keywords are also regex-compatible (e.g., `weekly|monthly`). If you don't know regex, just type plain text — it behaves exactly like contains matching; invalid regexes automatically fall back to contains matching, so it never errors out.
+
 ## ⚙️ Execution Priority Explanation
 
 ### By Rule Order (Default)
@@ -199,6 +227,14 @@ tags: [published]
 **A:** Open Obsidian's Developer Tools (Ctrl + Shift + I), check the Console tab for detailed plugin logs.
 
 ## 📝 Changelog
+
+### v3.2.0
+- ✅ Added match mode option: each rule can choose exact or fuzzy matching
+- ✅ Fuzzy matching is contains matching (case-insensitive): type `notes` and every filename/property value containing it triggers
+- ✅ Fuzzy match keywords are regex-compatible (advanced usage); invalid regexes automatically fall back to contains matching
+- ✅ Filename monitoring added exact match (filename without extension must be identical)
+- ✅ Rule list now displays each rule's match mode
+- ✅ Marketplace compliance fixes: removed startup notice, scoped CSS styles, mobile compatibility (electron platform check), logs gated behind DEBUG flag, added versions.json
 
 ### v3.1.0
 - ✅ Added real-time monitoring toggle
