@@ -2,9 +2,44 @@
 
 # Auto Move File
 
-[English](README_en.md) | **中文**
+[English](#english) | [中文文档](#中文文档)
 
 **Website**: [https://gitapp.net](https://gitapp.net)
+
+<a id="english"></a>
+## English
+
+Auto Move File is an Obsidian community plugin that automatically moves or copies notes to a target folder based on **frontmatter properties** (like `tags` or `status`) or **file names**. It supports multiple rules with configurable priority, real-time monitoring, folder archiving, copy mode, and per-rule **exact or fuzzy matching**.
+
+### Features
+
+- Move or copy notes automatically based on frontmatter properties or filenames
+- Multiple rules with configurable execution priority (rule order or property order)
+- Per-rule match mode: 🎯 **Exact match** (value must equal the trigger value) or 🔍 **Fuzzy match** (value contains the keyword; regex-compatible, case-insensitive)
+- Real-time monitoring with configurable delay (ms / s / min)
+- Archive entire folders, batch scan, rule reordering, bulk enable/disable
+- Full support for Chinese paths and Windows paths
+
+### Installation
+
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/Lsywk25/auto-move-file/releases/latest)
+2. Create the folder `.obsidian/plugins/auto-move-file/` inside your vault
+3. Copy the three files into it
+4. Restart Obsidian, then enable **Auto Move File** in *Settings → Community plugins*
+
+### Usage
+
+1. Open *Settings → Auto Move File* and add a rule: watch property, trigger value, and target folder
+2. Choose a match mode: **Exact** (the property value must equal the trigger value) or **Fuzzy** (the property value contains the keyword — e.g. trigger value `published` matches `published-article`)
+3. Update the note's frontmatter (e.g. set `tags: published`) or rename the file — the note is moved automatically after the configured delay
+4. You can also trigger manually with the commands **Check and move current file** / **Check all files**
+
+> 📖 Full documentation in Chinese below. / 完整中文文档见下方。
+
+---
+
+<a id="中文文档"></a>
+## 中文文档
 
 一个 Obsidian 插件，根据 frontmatter 属性或文件名自动移动或复制文件到指定目录。支持多规则、多属性监控和灵活的目标文件夹配置。
 

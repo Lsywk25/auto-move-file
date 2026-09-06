@@ -5,6 +5,7 @@
   "main": "main.js",
   "license": "MIT",
   "scripts": {
+    "build": "node scripts/build.js",
     "test": "node test/ui.test.js"
   },
   "devDependencies": {

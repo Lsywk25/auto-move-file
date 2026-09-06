@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ['*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILES="build/main.js build/manifest.json build/styles.css build/versions.json"
+          gh release upload "$GITHUB_REF_NAME" $FILES --clobber --repo "$GITHUB_REPOSITORY" \
+            || gh release create "$GITHUB_REF_NAME" $FILES --repo "$GITHUB_REPOSITORY" \
+                 --title "v$GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            build/main.js
+            build/manifest.json
+            build/styles.css
