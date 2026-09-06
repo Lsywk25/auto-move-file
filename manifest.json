@@ -1,7 +1,7 @@
 {
   "id": "auto-move-file",
   "name": "Auto Move File",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "minAppVersion": "0.15.0",
   "description": "Automatically move or copy notes to target folders based on frontmatter properties or file names, with flexible rules and exact or fuzzy matching.",
   "author": "极拓工坊",

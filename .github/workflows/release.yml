@@ -33,7 +33,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          FILES="build/main.js build/manifest.json build/styles.css build/versions.json"
+          FILES="build/main.js build/manifest.json build/styles.css"
           gh release upload "$GITHUB_REF_NAME" $FILES --clobber --repo "$GITHUB_REPOSITORY" \
             || gh release create "$GITHUB_REF_NAME" $FILES --repo "$GITHUB_REPOSITORY" \
                  --title "v$GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME"
