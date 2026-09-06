@@ -228,6 +228,12 @@ tags: [published]
 
 ## 📝 Changelog
 
+### v3.2.1
+- ✅ Bilingual README: added English section (intro/installation/usage) for the official directory
+- ✅ Added standard build script (scripts/build.js) for build verification
+- ✅ Added GitHub Actions release workflow with build-provenance attestations
+- ✅ No functional changes (main.js identical to 3.2.0)
+
 ### v3.2.0
 - ✅ Added match mode option: each rule can choose exact or fuzzy matching
 - ✅ Fuzzy matching is contains matching (case-insensitive): type `notes` and every filename/property value containing it triggers
